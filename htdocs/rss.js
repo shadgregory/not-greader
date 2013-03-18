@@ -14,3 +14,31 @@ function flip(link_id, desc_id) {
 	document.getElementById(link_id).innerHTML = 'Show';
     }
 }
+
+function search() {
+    var q = $('#rss_search').val();
+    $.ajax({
+	url: 'search'
+	,data: {q:q}
+	,context: document.body
+	,success: function(xml){
+	    $('#results').html('');
+	    $(xml).find("result").each(function(){
+		var blog_title = $(this).find('blog_title').text();
+		var entry_title = $(this).find('entry_title').text();
+		var url = $(this).find('url').text();
+		$('#results').append('<p><b>' + 
+				     blog_title + 
+				     '</b> ' +
+				     '<a href="' +
+				     url +
+				     '">' + 
+				     entry_title + 
+				     '</a>'+
+				     '</p>');
+	    });
+	}
+
+    });
+
+}
