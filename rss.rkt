@@ -24,16 +24,18 @@
 
 (define search 
   (lambda (req)
-					;select feed.title, entry.title, entry.url from entry inner join 
-					;feed on feed.id = entry.feed_id where entry.description like '%emacs%' or entry.title like '%emacs%';
     (define bindings (request-bindings req))
     (define q (extract-binding/single 'q bindings))
     (response/xexpr
      `(results
-       ,@(for/list (((blog-title entry-title url) (in-query pgc 
-							    (string-append "select feed.title, entry.title, entry.url from entry inner join feed on entry.feed_id = feed.id where entry.title like '%" q "%' or entry.description like '%" q "%' order by entry.date"))))
+       ,@(for/list (((blog-title entry-title url entry-date) (in-query pgc 
+							    (string-append "select feed.title, entry.title, entry.url, entry.date from entry inner join feed on entry.feed_id = feed.id where lower(entry.title) like lower('%" q "%') or lower(entry.description) like lower('%" q "%') order by entry.date desc"))))
 	  `(result
 	    (blog_title ,blog-title)
+	    (entry_date ,(string-append 
+			  (number->string (sql-timestamp-month entry-date)) "/"
+			  (number->string (sql-timestamp-day entry-date)) "/"
+			  (number->string (sql-timestamp-year entry-date))))
 	    (entry_title ,entry-title)
 	    (url ,url))))
      #:mime-type #"application/xml")))
@@ -46,7 +48,7 @@
 	(script ((src "//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"))" ")
 	(script ((type "text/javascript")(src "rss.js")) " "))
        (body
-	(input ((name "rss_search") (id "rss_search") (type "text") (size "20")))
+	(input ((name "rss_search") (id "rss_search") (onkeydown "if (event.keyCode == 13) search();")(type "text") (size "20")))
 	(button ((type "button") (onclick "search();")) "Search")
 	(div ((id "results"))))))))
 
@@ -59,13 +61,13 @@
 	(link ((rel "stylesheet") (href "http://code.jquery.com/ui/1.10.2/themes/start/jquery-ui.css")) " ")
 	(script ((src "//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js")) " ")
 	(script (( src "//ajax.googleapis.com/ajax/libs/jqueryui/1.10.2/jquery-ui.min.js")) " ")
-	(script "$(function() {$( '#tabs' ).tabs();});"))
+	(script "$(function() {$( '#tabs' ).tabs();});$('a').click(function() {$(this).attr('target', '_blank');});"))
        (body ((bgcolor "e5e5e5"))
 	     (div ((id "tabs") (style "width:850px;margin-left:auto;margin-right:auto;"))
 		  (ul
-		   (li (a ((href "#blog_roll")) "Blog Roll"))
+		   (li (a ((href "#latest_items")) "Latest Items"))
 		   (li (a ((href "search-page")) "Search")))
-		  (div ((id "blog_roll"))
+		  (div ((id "latest_items"))
 		       ,@(for/list (((feed-title title link image-url date desc entry-id) 
 				     (in-query pgc 
 					       "select feed.title, entry.title, entry.url, feed.image_url, entry.date, entry.description, entry.id from entry inner join feed on feed.id = entry.feed_id where entry.date > (now () - interval '48 hour') and entry.read = false order by entry.date desc")))

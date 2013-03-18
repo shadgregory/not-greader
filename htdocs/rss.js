@@ -26,16 +26,12 @@ function search() {
 	    $(xml).find("result").each(function(){
 		var blog_title = $(this).find('blog_title').text();
 		var entry_title = $(this).find('entry_title').text();
+		var entry_date = $(this).find('entry_date').text();
 		var url = $(this).find('url').text();
-		$('#results').append('<p><b>' + 
-				     blog_title + 
-				     '</b> ' +
-				     '<a href="' +
-				     url +
-				     '">' + 
-				     entry_title + 
-				     '</a>'+
-				     '</p>');
+		$('#results').append('<p><b>' + blog_title + '</b> ' +
+				     '<a href="' + url + '">' + 
+				     entry_title + " (" + entry_date + ")" +
+				     '</a></p>');
 	    });
 	}
 
