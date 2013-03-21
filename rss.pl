@@ -6,12 +6,17 @@ use XML::RSS;
 
 my @feeds = ();
 my $dbh = DBI->connect("dbi:Pg:dbname=feed", "feed","abc123");
-my $feed_handle = $dbh->prepare("select id, url from feed;");
+
+#clean up the oldest entries
+$dbh->do("UPDATE entry SET read=true where date < (now() - interval '1 year')");
+
+my $feed_handle = $dbh->prepare("select id, url, title from feed;");
 $feed_handle->execute();
 
 while (my @feeds = $feed_handle->fetchrow_array()) {
     my $feed_id = $feeds[0];
     my $feed_url = $feeds[1];
+    print $feeds[2] . "\n";
     my $xml = get($feed_url);
     my $rss = new XML::RSS;
     $rss->parse($xml);
@@ -20,6 +25,7 @@ while (my @feeds = $feed_handle->fetchrow_array()) {
 	my $title    = $i->{'title'};
 	my $url      = $i->{'link'};
 	my $desc     = $i->{'description'};
+	next if !$url; #looking at you perl 6 planet!
 	my $sth = $dbh->prepare("SELECT * from entry where url=?;");
 	$sth->execute($url);
 	my @data = $sth->fetchrow_array();
@@ -28,3 +34,5 @@ while (my @feeds = $feed_handle->fetchrow_array()) {
 	$insert_sth->execute($title, $url, $feed_id, $desc, $pub_date);
     }
 }
+
+
