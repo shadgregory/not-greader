@@ -43,8 +43,7 @@
      `(results
        ,@(for/list (((blog-title entry-title url entry-date) 
 		     (in-query pgc 
-			       (string-append "select feed.title, entry.title, entry.url, entry.date from entry inner join feed on entry.feed_id = feed.id where lower(entry.title) like lower('%" q "%') or lower(entry.description) like lower('%" q "%') order by entry.date desc"))
-		     ))
+			       "select feed.title, entry.title, entry.url, entry.date from entry inner join feed on entry.feed_id = feed.id where lower(entry.title) ~ lower($1) or lower(entry.description) ~ lower($2) order by entry.date desc" q q)))
 	  `(result
 	    (blog_title ,blog-title)
 	    (entry_date ,(str
