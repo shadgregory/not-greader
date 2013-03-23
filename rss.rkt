@@ -4,7 +4,8 @@
  db
  xml
  web-server/servlet
- web-server/servlet-env)
+ web-server/servlet-env
+ "db-lib.rkt")
 
 (provide/contract (start (request? . -> . response?)))
 
@@ -41,9 +42,7 @@
     (define q (extract-binding/single 'q bindings))
     (response/xexpr
      `(results
-       ,@(for/list (((blog-title entry-title url entry-date) 
-		     (in-query pgc 
-			       "select feed.title, entry.title, entry.url, entry.date from entry inner join feed on entry.feed_id = feed.id where lower(entry.title) ~ lower($1) or lower(entry.description) ~ lower($2) order by entry.date desc" q q)))
+       ,@(for/list (((blog-title entry-title url entry-date) (search-items pgc q)))
 	  `(result
 	    (blog_title ,blog-title)
 	    (entry_date ,(str
@@ -61,9 +60,7 @@
     (response/xexpr
      `(results
        ,@(for/list (((title description url id)
-		     (in-query pgc
-			       "select title, description, url, id from entry where feed_id=$1 and read=false limit 50" 
-			       (string->number feed-id))))
+		     (fetch-unread-items pgc feed-id)))
 	   `(result
 	     (title ,title)
 	     (description ,description)
