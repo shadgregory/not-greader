@@ -22,6 +22,7 @@ while (my @feeds = $feed_handle->fetchrow_array()) {
     $rss->parse($xml);
     for my $i (@{$rss->{items}}) {
 	my $pub_date = $i->{'pubDate'};
+	$pub_date = $i->{'dc'}->{'date'} if !$pub_date;
 	my $title    = $i->{'title'};
 	my $url      = $i->{'link'};
 	my $desc     = $i->{'description'};
@@ -34,5 +35,4 @@ while (my @feeds = $feed_handle->fetchrow_array()) {
 	$insert_sth->execute($title, $url, $feed_id, $desc, $pub_date);
     }
 }
-
 
