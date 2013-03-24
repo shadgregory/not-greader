@@ -8,7 +8,7 @@ my @feeds = ();
 my $dbh = DBI->connect("dbi:Pg:dbname=feed", "feed","abc123");
 
 #clean up the oldest entries
-$dbh->do("UPDATE entry SET read=true where date < (now() - interval '1 year')");
+$dbh->do("UPDATE item SET read=true where date < (now() - interval '1 year')");
 
 my $feed_handle = $dbh->prepare("select id, url, title from feed;");
 $feed_handle->execute();
@@ -27,11 +27,11 @@ while (my @feeds = $feed_handle->fetchrow_array()) {
 	my $url      = $i->{'link'};
 	my $desc     = $i->{'description'};
 	next if !$url; #looking at you perl 6 planet!
-	my $sth = $dbh->prepare("SELECT * from entry where url=?;");
+	my $sth = $dbh->prepare("SELECT * from item where url=?;");
 	$sth->execute($url);
 	my @data = $sth->fetchrow_array();
 	next if @data > 0;
-	my $insert_sth = $dbh->prepare("INSERT INTO entry(title, url, feed_id, description, date) values(?,?,?,?,?)");
+	my $insert_sth = $dbh->prepare("INSERT INTO item(title, url, feed_id, description, date) values(?,?,?,?,?)");
 	$insert_sth->execute($title, $url, $feed_id, $desc, $pub_date);
     }
 }
