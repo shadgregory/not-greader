@@ -30,10 +30,10 @@
 (define mark-read
   (lambda (req)
     (define bindings (request-bindings req))
-    (define entry-id (extract-binding/single 'entry_id bindings))
-    (query-exec pgc "update entry set read=true where id=$1" (string->number entry-id))
+    (define item-id (extract-binding/single 'item_id bindings))
+    (query-exec pgc "update item set read=true where id=$1" (string->number item-id))
     (response/xexpr
-     `(id ,entry-id)
+     `(id ,item-id)
      #:mime-type #"application/xml")))
 
 (define search 
@@ -42,14 +42,14 @@
     (define q (extract-binding/single 'q bindings))
     (response/xexpr
      `(results
-       ,@(for/list (((blog-title entry-title url entry-date) (search-items pgc q)))
+       ,@(for/list (((blog-title item-title url item-date) (search-items pgc q)))
 	  `(result
 	    (blog_title ,blog-title)
-	    (entry_date ,(str
-			  (sql-timestamp-month entry-date) "/"
-			  (sql-timestamp-day entry-date) "/"
-			  (sql-timestamp-year entry-date)))
-	    (entry_title ,entry-title)
+	    (item_date ,(str
+			  (sql-timestamp-month item-date) "/"
+			  (sql-timestamp-day item-date) "/"
+			  (sql-timestamp-year item-date)))
+	    (item_title ,item-title)
 	    (url ,url))))
      #:mime-type #"application/xml")))
 
@@ -73,18 +73,20 @@
      `(html
        (body
 	,@(for/list (((title url id)
-		      (in-query pgc "select title, url, id from feed order by title")))
-	    (let ((unread-count (query-value pgc "select count(*) from entry where feed_id=$1 and read=false" id)))
+		     (get-feed-list pgc)))
+	    (let ((unread-count 
+		   (get-unread-count pgc (number->string id))))
 	      `(p (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")")) 
 		      (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
 		(div ((style "display:none;border:solid 1px black") (id 
 								     ,(str "results_" id))))))))))))
+
 (define get-feed-title
   (lambda (req)
     (define bindings (request-bindings req))
     (define feed-id (extract-binding/single 'feed_id bindings))
-    (define unread-count (query-value pgc "select count(*) from entry where feed_id=$1 and read=false" (string->number feed-id)))
-    (define feed-title (query-value pgc "select title from feed where id=$1" (string->number feed-id)))
+    (define unread-count (get-unread-count pgc feed-id))
+    (define feed-title (fetch-feed-title pgc feed-id))
     (response/xexpr
      `(title ,(str feed-title " (" unread-count ")"))
      #:mime-type #"application/xml")))
@@ -116,18 +118,17 @@
 		   (li (a ((href "search-page")) "Search"))
 		   (li (a ((href "blog-list")) "Blog List")))
 		  (div ((id "latest_items"))
-		       ,@(for/list (((feed-title title link image-url date desc entry-id) 
-				     (in-query pgc 
-					       "select feed.title, entry.title, entry.url, feed.image_url, entry.date, entry.description, entry.id from entry inner join feed on feed.id = entry.feed_id where entry.date > (now () - interval '36 hour') and entry.read = false order by entry.date desc")))
+		       ,@(for/list (((feed-title title link image-url date desc item-id) 
+				     (get-item pgc)))
 			   `(p (div ,(string-append 
 				      (number->string (sql-timestamp-month date)) "/"
 				      (number->string (sql-timestamp-day date)) "/"
 				      (number->string (sql-timestamp-year date)) " ")
 				    (b ,feed-title)) (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
 				    (div (a ((href "javascript:void(0)") 
-					     (id ,(string-append "toggle-" (number->string entry-id))) 
-					     (onclick ,(string-append "flip('toggle-" (number->string entry-id) "', 'desc-" (number->string entry-id) "');")))"Show"))
-				    (div ((style "display:none")(id ,(string-append "desc-" (number->string entry-id)))) 
+					     (id ,(string-append "toggle-" (number->string item-id))) 
+					     (onclick ,(string-append "flip('toggle-" (number->string item-id) "', 'desc-" (number->string item-id) "');")))"Show"))
+				    (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id)))) 
 					 ,(cdata 'cdata-start 'cdata-end desc)))))))))))
 
 (define (start request)

@@ -5,7 +5,7 @@ function flip(link_id, desc_id) {
 	var id = desc_id.replace("desc-","");
 	$.ajax({
 	    url: 'mark-read'
-	    ,data: {entry_id : id}
+	    ,data: {item_id : id}
 	    ,context: document.body
 	});
 
@@ -25,25 +25,25 @@ function search() {
 	    $('#results').html('');
 	    $(xml).find("result").each(function(){
 		var blog_title = $(this).find('blog_title').text();
-		var entry_title = $(this).find('entry_title').text();
-		var entry_date = $(this).find('entry_date').text();
+		var item_title = $(this).find('item_title').text();
+		var item_date = $(this).find('item_date').text();
 		var url = $(this).find('url').text();
 		$('#results').append('<p><b>' + blog_title + '</b> ' +
 				     '<a href="javascript:void(0)" onclick="window.open(\'' + url + '\')">' + 
-				     entry_title + " (" + entry_date +
+				     item_title + " (" + item_date +
 				     ')</a></p>');
 	    });
 	}
     });
 }
 
-function mark_read(feed_id, entry_id) {
+function mark_read(feed_id, item_id) {
     $.ajax({
 	url : 'mark-read'
-	,data : {entry_id : entry_id} 
+	,data : {item_id : item_id} 
 	,context: document.body
     });
-    $('#entry-'+entry_id).hide();
+    $('#item-'+item_id).hide();
     $.ajax({
 	url : 'get-feed-title'
 	,data: {feed_id : feed_id}
@@ -66,13 +66,13 @@ function retrieve_unread(feed_id) {
 	    ,success: function(xml){
 		$('#results_'+feed_id).html('');
 		$(xml).find("result").each(function(){
-		    var entry_title = $(this).find('title').text();
-		    var entry_desc = $(this).find('description').text();
-		    var entry_url = $(this).find('url').text();
-		    var entry_id = $(this).find('id').text();
-		    $('#results_'+feed_id).append('<div style="padding:4px;" id="entry-'+entry_id+'"><a onclick="mark_read('+feed_id + ","+entry_id+');window.open(\'' 
-						  + entry_url + '\');" href="javascript:void(0)">' 
-						  + entry_title + '</a></div>');
+		    var item_title = $(this).find('title').text();
+		    var item_desc = $(this).find('description').text();
+		    var item_url = $(this).find('url').text();
+		    var item_id = $(this).find('id').text();
+		    $('#results_'+feed_id).append('<div style="padding:4px;" id="item-'+item_id+'"><a onclick="mark_read('+feed_id + ","+item_id+');window.open(\'' 
+						  + item_url + '\');" href="javascript:void(0)">' 
+						  + item_title + '</a></div>');
 		});
 	    }
 	});
