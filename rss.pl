@@ -7,8 +7,8 @@ use XML::RSS;
 my @feeds = ();
 my $dbh = DBI->connect("dbi:Pg:dbname=feed", "feed","abc123");
 
-#clean up the oldest entries
-$dbh->do("UPDATE item SET read=true where date < (now() - interval '1 year')");
+#clean up the oldest items
+$dbh->do("UPDATE item SET read=true where date < (now() - interval '6 month')");
 
 my $feed_handle = $dbh->prepare("select id, url, title from feed;");
 $feed_handle->execute();
