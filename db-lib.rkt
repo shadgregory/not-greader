@@ -27,6 +27,6 @@
 (define get-item
   (lambda (pgc)
     (in-query pgc 
-	      "select feed.title, item.title, item.url, feed.image_url, item.date, item.description, item.id from item inner join feed on feed.id = item.feed_id where item.date > (now () - interval '24 hour') and item.read = false order by item.date desc")))
+	      "select feed.title, item.title, item.url, feed.image_url, item.date, item.description, item.id from item inner join feed on feed.id = item.feed_id where item.date > (now () - interval '20 hour') and item.read = false order by item.date desc")))
 
 (provide (all-defined-out))
