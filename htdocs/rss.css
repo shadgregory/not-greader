@@ -1,0 +1,6 @@
+a.item_title:link {text-decoration:none;}
+a.item_title:visited {text-decoration:none;}
+a.item_title:hover {text-decoration:underline;}
+a.item_title:active {text-decoration:underline;}
+.item_title {font-weight:bold;}
+.centered {width:850px;margin-left:auto;margin-right:auto;}

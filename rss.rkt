@@ -141,11 +141,12 @@
 	(title "Shad's Reader")
 	(script ((type "text/javascript")(src "rss.js")) " ")
 	(link ((rel "stylesheet") (href "jquery-ui.css")) " ")
+	(link ((rel "stylesheet") (href "rss.css")) " ")
 	(script ((src "jquery-1.9.1.min.js")) " ")
 	(script ((src "jquery-ui.min.js"))" ")
 	(script "$(function() {$( '#tabs' ).tabs();});main_init();"))
        (body ((bgcolor "#5c9ccc") (style "background-color;#e5e5e5;"))
-	     (div ((id "tabs") (style "width:850px;margin-left:auto;margin-right:auto;"))
+	     (div ((id "tabs") (class "centered"))
 		  (ul
 		   (li (a ((href "#latest_items")) "Latest Items"))
 		   (li (a ((href "search-page")) "Search"))
@@ -164,16 +165,17 @@
 			    (div ((id "subscribe_results"))))
 		       ,@(for/list (((feed-title title link image-url date desc item-id) 
 				     (get-item pgc)))
-			   `(p (div ,(str
-				      (sql-timestamp-month date) "/"
-				      (sql-timestamp-day date) "/"
-				      (sql-timestamp-year date) " ")
-				    (b ,feed-title)) (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
-				    (div (a ((href "javascript:void(0)") 
-					     (id ,(string-append "toggle-" (number->string item-id))) 
-					     (onclick ,(str "flip('toggle-" item-id "', 'desc-" item-id "');")))"Show"))
-				    (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id)))) 
-					 ,(cdata 'cdata-start 'cdata-end desc)))))))))))
+			   `(p (div 
+				(a ((href "javascript:void(0)") (class "item_title") 
+				    (id ,(string-append "toggle-" (number->string item-id))) 
+				    (onclick ,(str "flip('desc-" item-id "');"))) 
+				   ,(str
+				     (sql-timestamp-month date) "/"
+				     (sql-timestamp-day date) "/"
+				     (sql-timestamp-year date) " " feed-title)))
+			       (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
+			       (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id)))) 
+				    ,(cdata 'cdata-start 'cdata-end desc)))))))))))
 
 (define (start request)
   (rss-dispatch request))
