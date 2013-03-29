@@ -1,8 +1,9 @@
 #lang racket
- 
 (require 
  db
+ net/url
  xml
+ xml/path
  web-server/servlet
  web-server/servlet-env
  "db-lib.rkt")
@@ -35,6 +36,36 @@
     (response/xexpr
      `(id ,item-id)
      #:mime-type #"application/xml")))
+
+(define check-url
+  (lambda (req)
+    (define bindings (request-bindings req))
+    (define url (extract-binding/single 'url bindings))
+    (define url-string (string->url (regexp-replace #rx"^[ ]+" url "")))
+    (define in (get-pure-port url-string))
+    (define response-string (port->string in))
+    (close-input-port in)
+    (define rss-xexpr (xml->xexpr
+		       (document-element
+			(read-xml (open-input-string
+				   response-string)))))
+    (response/xexpr
+     `(site
+       (title ,(se-path* '(title) rss-xexpr))
+       (desc ,(se-path* '(description) rss-xexpr)))
+     #:mime-type #"application/xml")))
+
+(define add-feed
+  (lambda (req)
+    (define bindings (request-bindings req))
+    (define link (extract-binding/single 'link bindings))
+    (define title (extract-binding/single 'title bindings))
+    (query-exec pgc "insert into feed(title, url) values ($1,$2);" title link)
+    (response/xexpr
+     `(insert
+       (title ,title)
+       (link ,link))
+     #:mime-type #"application.xml")))
 
 (define search 
   (lambda (req)
@@ -95,22 +126,24 @@
   (lambda (req)
     (response/xexpr
      `(html 
-      (body
-	(input ((name "rss_search") (id "rss_search") (onkeydown "if (event.keyCode == 13) search();")(type "text") (size "20")))
+       (head (script "$('button').button();"))
+       (body
+	(input ((name "rss_search") (id "rss_search") (onkeydown "if (event.keyCode == 13) search();")
+		(type "text") (size "20")))
 	(button ((type "button") (onclick "search();")) "Search")
 	(div ((id "results"))))))))
 
-(define recent-entries 
+(define recent-items
   (lambda (req)
     (response/xexpr
      `(html
        (head
 	(title "Shad's Reader")
 	(script ((type "text/javascript")(src "rss.js")) " ")
-	(link ((rel "stylesheet") (href "http://code.jquery.com/ui/1.10.2/themes/flick/jquery-ui.css")) " ")
-	(script ((src "//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js")) " ")
-	(script (( src "//ajax.googleapis.com/ajax/libs/jqueryui/1.10.2/jquery-ui.min.js")) " ")
-	(script "$(function() {$( '#tabs' ).tabs();});"))
+	(link ((rel "stylesheet") (href "jquery-ui.css")) " ")
+	(script ((src "jquery-1.9.1.min.js")) " ")
+	(script ((src "jquery-ui.min.js"))" ")
+	(script "$(function() {$( '#tabs' ).tabs();});main_init();"))
        (body ((bgcolor "#5c9ccc") (style "background-color;#e5e5e5;"))
 	     (div ((id "tabs") (style "width:850px;margin-left:auto;margin-right:auto;"))
 		  (ul
@@ -118,6 +151,17 @@
 		   (li (a ((href "search-page")) "Search"))
 		   (li (a ((href "blog-list")) "Blog List")))
 		  (div ((id "latest_items"))
+		       (button ((id "opener")) "Subscribe")
+		       (div ((id "subscribe_dialog") (title "subscribe"))
+			    (table 
+			     (tr 
+			      (td 
+			       (input ((name "feed_link") (id "feed_link") 
+				       (onkeydown "if (event.keyCode == 13) search();")
+				       (type "text") (size "24"))))
+			      (td 
+			       (button ((type "button") (onclick "check_url($('#feed_link').val());")) "Subscribe"))))
+			    (div ((id "subscribe_results"))))
 		       ,@(for/list (((feed-title title link image-url date desc item-id) 
 				     (get-item pgc)))
 			   `(p (div ,(string-append 
@@ -136,12 +180,14 @@
 
 (define-values (rss-dispatch rss-url)
   (dispatch-rules
-   (("") recent-entries)
+   (("") recent-items)
    (("mark-read") mark-read)
    (("search") search)
    (("blog-list") blog-list)
    (("search-page") search-page)
    (("get-feed-title") get-feed-title)
+   (("check-url") check-url)
+   (("add-feed") add-feed)
    (("retrieve-unread") retrieve-unread)))
 
 (serve/servlet start

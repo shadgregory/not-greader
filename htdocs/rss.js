@@ -1,3 +1,60 @@
+function main_init () {
+    $(function() {
+	$( "input[type=submit], button" ).button();
+	$('#subscribe_dialog').dialog({
+	    autoOpen: false
+	    ,modal: true
+	    ,position: ['top',100]
+	    ,width:400
+	    ,height:350
+	});
+	$('#opener').click(function() {
+	    $('#subscribe_dialog').dialog("open");
+	});
+    });
+}
+
+function add_feed(title, link) {
+    $.ajax({
+	url:'add-feed'
+	,context: document.body
+	,data:{link:link,title:title}
+	,success: function() {
+	    $('#feed_link').val("");
+	    $('#subscribe_results').html('');
+	    $('#subscribe_dialog').dialog('close');
+	}
+	,error: function() {
+	    $('#subscribe_results').html('');
+	    $('#subscribe_results').append("<p><b>There was a problem adding: " 
+					   + title + "</b></p>");
+	}
+    });
+}
+
+function check_url(url) {
+    $('#subscribe_results').html('');
+    $.ajax({
+	url:'check-url'
+	,context: document.body
+	,data: {url : url}
+	,success: function(xml) {
+	    $(xml).find('site').each(function(){
+		var title = $(this).find('title').text();
+		var desc = $(this).find('desc').text();
+		if (title) {
+		    $('#subscribe_results').append("<p><b>" + title + "</b> : " + desc + 
+						   "</p><p><button onclick='add_feed(\"" + 
+						   title + "\",\"" + 
+						   url + "\");' type='button'>Correct</button></p>");
+		} else {
+		    $('#subscribe_results').append("<p>Could not parse feed.</p>");
+		}
+	    });
+	}
+    });
+}
+
 function flip(link_id, desc_id) {
     if (document.getElementById(desc_id).style.display == 'none') {
 	document.getElementById(desc_id).style.display = 'block';
