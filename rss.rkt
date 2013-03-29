@@ -164,14 +164,14 @@
 			    (div ((id "subscribe_results"))))
 		       ,@(for/list (((feed-title title link image-url date desc item-id) 
 				     (get-item pgc)))
-			   `(p (div ,(string-append 
-				      (number->string (sql-timestamp-month date)) "/"
-				      (number->string (sql-timestamp-day date)) "/"
-				      (number->string (sql-timestamp-year date)) " ")
+			   `(p (div ,(str
+				      (sql-timestamp-month date) "/"
+				      (sql-timestamp-day date) "/"
+				      (sql-timestamp-year date) " ")
 				    (b ,feed-title)) (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
 				    (div (a ((href "javascript:void(0)") 
 					     (id ,(string-append "toggle-" (number->string item-id))) 
-					     (onclick ,(string-append "flip('toggle-" (number->string item-id) "', 'desc-" (number->string item-id) "');")))"Show"))
+					     (onclick ,(str "flip('toggle-" item-id "', 'desc-" item-id "');")))"Show"))
 				    (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id)))) 
 					 ,(cdata 'cdata-start 'cdata-end desc)))))))))))
 
