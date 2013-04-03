@@ -53,7 +53,7 @@
        inner join rssuser_feed on rssuser_feed.feed_id = feed.id 
        inner join rssuser on rssuser.id = rssuser_feed.rssuser_id
        left outer join read_item on read_item.item_id = item.id and read_item.rssuser_id = rssuser.id
-       where item.date > (now () - interval '20 hour') and rssuser.id = $1 order by item.date desc" 
+       where item.date > (now () - interval '20 hour') and rssuser.id = $1 and read_item.item_id is null order by item.date desc" 
 	      user-id)))
 
 (define get-rssuser
