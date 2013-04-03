@@ -1,20 +1,37 @@
 #lang racket
 (require db)
 
-(define search-items 
-  (lambda (pgc query)
-    (in-query pgc 
-	      "select feed.title, item.title, item.url, item.date from item inner join feed on item.feed_id = feed.id where lower(item.title) ~ lower($1) or lower(item.description) ~ lower($2) order by item.date desc" query query)))
+(define search-items
+  (lambda (pgc query user-id)
+    (in-query pgc  
+	      "select feed.title, item.title, item.url, item.date AS item_title from feed 
+       inner join rssuser_feed on rssuser_feed.feed_id = feed.id 
+       inner join rssuser on rssuser_feed.rssuser_id = rssuser.id 
+       inner join item on item.feed_id = feed.id 
+       where rssuser.id=$1 and (lower(item.title) ~ lower($2) or lower(item.description) ~ lower($3)) order by item.date desc"
+	      user-id query query)))
 
 (define fetch-unread-items
-  (lambda (pgc feed-id)
+  (lambda (pgc feed-id user-id)
     (in-query pgc
-	      "select title, description, url, id from item where feed_id=$1 and read=false limit 50" 
-	      (string->number feed-id))))
+	      "select item.title, item.description, item.url, item.id from item 
+       inner join feed on item.feed_id = feed.id 
+       inner join rssuser_feed on rssuser_feed.feed_id = feed.id 
+       inner join rssuser on rssuser.id = rssuser_feed.rssuser_id
+       left outer join read_item on read_item.item_id = item.id and read_item.rssuser_id = rssuser.id
+       where item.feed_id=$1 and rssuser.id=$2 and read_item.item_id is null"
+	      (string->number feed-id) (string->number user-id))))
+
 
 (define get-unread-count 
-  (lambda (pgc feed-id)  
-    (query-value pgc "select count(*) from item where feed_id=$1 and read=false" (string->number feed-id))))
+  (lambda (pgc feed-id user-id)  
+    (query-value pgc "select count(*) from item 
+       inner join feed on item.feed_id = feed.id 
+       inner join rssuser_feed on rssuser_feed.feed_id = feed.id 
+       inner join rssuser on rssuser.id = rssuser_feed.rssuser_id
+       left outer join read_item on read_item.item_id = item.id and read_item.rssuser_id = rssuser.id
+       where item.feed_id=$1 and rssuser.id=$2 and read_item.item_id is null"
+		 (string->number feed-id) user-id)))
 
 (define fetch-feed-title 
   (lambda (pgc feed-id)
@@ -28,5 +45,9 @@
   (lambda (pgc)
     (in-query pgc 
 	      "select feed.title, item.title, item.url, feed.image_url, item.date, item.description, item.id from item inner join feed on feed.id = item.feed_id where item.date > (now () - interval '20 hour') and item.read = false order by item.date desc")))
+
+(define get-rssuser
+  (lambda (pgc username) 
+    (query-row pgc "select password,username,cookieid,id from rssuser where username=$1" username)))
 
 (provide (all-defined-out))

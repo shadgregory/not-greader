@@ -14,11 +14,11 @@ function main_init () {
     });
 }
 
-function add_feed(title, link) {
+function add_feed(username, title, link) {
     $.ajax({
 	url:'add-feed'
 	,context: document.body
-	,data:{link:link,title:title}
+	,data:{link:link,title:title,username:username}
 	,success: function() {
 	    $('#feed_link').val("");
 	    $('#subscribe_results').html('');
@@ -32,7 +32,7 @@ function add_feed(title, link) {
     });
 }
 
-function check_url(url) {
+function check_url(username, url) {
     $('#subscribe_results').html('');
     $.ajax({
 	url:'check-url'
@@ -45,6 +45,7 @@ function check_url(url) {
 		if (title) {
 		    $('#subscribe_results').append("<p><b>" + title + "</b> : " + desc + 
 						   "</p><p><button onclick='add_feed(\"" + 
+						   username + "\",\"" + 
 						   title + "\",\"" + 
 						   url + "\");' type='button'>Correct</button></p>");
 		} else {

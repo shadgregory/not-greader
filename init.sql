@@ -32,3 +32,8 @@ create table rssuser_feed(
        feed_id integer references feed(id), 
        rssuser_id integer references rssuser(id)
 );
+
+create table read_items(
+    item_id integer references item(id),
+    rssuser_id integer references rssuser(id)
+);
