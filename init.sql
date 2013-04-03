@@ -22,6 +22,7 @@ alter table item add constraint unique_item_id unique(id);
 CREATE TABLE rssuser (
        id serial,
        username text,
+       cookieid text,
        password text
 );
 
