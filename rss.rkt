@@ -178,7 +178,7 @@
      `(html
        (body
 	,@(for/list (((title url id)
-		     (get-feed-list pgc)))
+		     (get-feed-list pgc *user-id*)))
 	    (let ((unread-count 
 		   (get-unread-count pgc (number->string id) *user-id*)))
 	      `(p (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")")) 
@@ -279,8 +279,8 @@
 				      (td 
 				       (button ((type "button") (onclick ,(str "check_url('"username"',$('#feed_link').val());"))) "Subscribe"))))
 				    (div ((id "subscribe_results"))))
-			       ,@(for/list (((feed-title title link image-url date desc item-id) 
-					     (get-item pgc)))
+			       ,@(for/list (((feed-title title link date desc item-id) 
+					     (get-item pgc *user-id*)))
 				   `(p (div 
 					(a ((href "javascript:void(0)") (class "item_title") 
 					    (id ,(string-append "toggle-" (number->string item-id))) 

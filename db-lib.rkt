@@ -38,13 +38,23 @@
     (query-value pgc "select title from feed where id=$1" (string->number feed-id))))
 
 (define get-feed-list
-  (lambda (pgc)
-    (in-query pgc "select title, url, id from feed order by title")))
+  (lambda (pgc user-id)
+    (in-query pgc "select feed.title, feed.url, feed.id from feed 
+       inner join rssuser_feed on rssuser_feed.feed_id = feed.id
+       inner join rssuser on rssuser_feed.rssuser_id = rssuser.id
+       where rssuser.id=$1
+       order by title" user-id)))
 
 (define get-item
-  (lambda (pgc)
+  (lambda (pgc user-id)
     (in-query pgc 
-	      "select feed.title, item.title, item.url, feed.image_url, item.date, item.description, item.id from item inner join feed on feed.id = item.feed_id where item.date > (now () - interval '20 hour') and item.read = false order by item.date desc")))
+	      "select feed.title, item.title, item.url, item.date, item.description, item.id from item 
+       inner join feed on item.feed_id = feed.id 
+       inner join rssuser_feed on rssuser_feed.feed_id = feed.id 
+       inner join rssuser on rssuser.id = rssuser_feed.rssuser_id
+       left outer join read_item on read_item.item_id = item.id and read_item.rssuser_id = rssuser.id
+       where item.date > (now () - interval '20 hour') and rssuser.id = $1 order by item.date desc" 
+	      user-id)))
 
 (define get-rssuser
   (lambda (pgc username) 
