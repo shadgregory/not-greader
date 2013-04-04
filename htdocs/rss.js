@@ -46,8 +46,8 @@ function check_url(username, url) {
 		    $('#subscribe_results').append("<p><b>" + title + "</b> : " + desc + 
 						   "</p><p><button onclick='add_feed(\"" + 
 						   username + "\",\"" + 
-						   title + "\",\"" + 
-						   url + "\");' type='button'>Correct</button></p>");
+						   escape(title) + "\",\"" + 
+						   url + "\");' type='button'>Is this correct?</button></p>");
 		} else {
 		    $('#subscribe_results').append("<p>Could not parse feed.</p>");
 		}
