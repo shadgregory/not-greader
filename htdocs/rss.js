@@ -18,7 +18,7 @@ function add_feed(username, title, link) {
     $.ajax({
 	url:'add-feed'
 	,context: document.body
-	,data:{link:link,title:title,username:username}
+	,data:{link:link,title:unescape(title),username:username}
 	,success: function() {
 	    $('#feed_link').val("");
 	    $('#subscribe_results').html('');
