@@ -110,10 +110,17 @@
 		       (document-element
 			(read-xml (open-input-string
 				   response-string)))))
+    (define description 
+      (cond
+       ((eq? (se-path* '(description) rss-xexpr) #f)
+	(se-path* '(subtitle) rss-xexpr)
+	)
+       (else
+	(se-path* '(description) rss-xexpr))))
     (response/xexpr
      `(site
        (title ,(se-path* '(title) rss-xexpr))
-       (desc ,(se-path* '(description) rss-xexpr)))
+       (desc ,description))
      #:mime-type #"application/xml")))
 
 (define add-feed
@@ -230,10 +237,7 @@
 	     ((equal? cookieid (vector-ref query-vector 2)) 
 	      (begin
 		(set! *user-id* (vector-ref query-vector 3)) 
-		(display "setting *user-id* : ")
-		(displayln *user-id*)
-		#t)
-	      )
+		#t))
 	     (else #f))))
 	#f)))
 
