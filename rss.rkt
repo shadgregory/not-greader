@@ -17,14 +17,14 @@
 (provide/contract (start (request? . -> . response?)))
 
 (define pgc
-  (postgresql-connect #:user "postgres"
+  (postgresql-connect #:user "feed"
 		      #:database "feed"
 		      #:password "abc123"))
 
 (define db-conn (virtual-connection 
 		 (connection-pool
 		  (lambda ()
-		    (postgresql-connect #:user "postgres"
+		    (postgresql-connect #:user "feed"
 					#:database "feed"
 					#:password "abc123")))))
 
