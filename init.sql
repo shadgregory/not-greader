@@ -33,6 +33,7 @@ create table rssuser_feed(
        feed_id integer references feed(id), 
        rssuser_id integer references rssuser(id)
 );
+alter table rssuser_feed add constraint unique_rssuser_feed unique(feed_id, rssuser_id);
 
 create table read_items(
     item_id integer references item(id),
