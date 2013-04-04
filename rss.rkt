@@ -17,15 +17,22 @@
 (provide/contract (start (request? . -> . response?)))
 
 (define pgc
-  (postgresql-connect #:user "feed"
+  (postgresql-connect #:user "postgres"
 		      #:database "feed"
 		      #:password "abc123"))
+
+(define db-conn (virtual-connection 
+		 (connection-pool
+		  (lambda ()
+		    (postgresql-connect #:user "postgres"
+					#:database "feed"
+					#:password "abc123")))))
 
 (define *user-id* 0)
 
 (define get-user-id 
   (lambda (username)
-    (vector-ref (get-rssuser pgc username) 3)))
+    (vector-ref (get-rssuser db-conn username) 3)))
 
 ; string-append replacement macro
 (define-syntax str
@@ -54,7 +61,7 @@
     (let* ((username (car (formlet-process user-formlet req)))
 	   (password (second (formlet-process user-formlet req)))
 	   (cookieid (number->string (random 4294967087)))
-	   (query-vector (get-rssuser pgc username))
+	   (query-vector (get-rssuser db-conn username))
 	   (id-cookie (make-cookie "id" (string-append  (form-urlencoded-decode username) "-" cookieid) #:secure? #t)))
       (cond
        ((= 0 (vector-length query-vector))
@@ -62,7 +69,7 @@
        ((not (string=? (bytes->string/latin-1 (md5 password)) (vector-ref query-vector 0)))
 	(redirect-to "/")) ;;bad password
        (else
-	(query-exec pgc "update rssuser set cookieid=$1 where username=$2" cookieid username)
+	(query-exec db-conn "update rssuser set cookieid=$1 where username=$2" cookieid username)
 	(set! *user-id* (vector-ref query-vector 3))
 	(redirect-to "home"
 		     see-other
@@ -93,7 +100,7 @@
   (lambda (req)
     (define bindings (request-bindings req))
     (define item-id (extract-binding/single 'item_id bindings))
-    (query-exec pgc "insert into read_item(item_id, rssuser_id) values ($1,$2)" (string->number item-id) *user-id*)
+    (query-exec db-conn "insert into read_item(item_id, rssuser_id) values ($1,$2)" (string->number item-id) *user-id*)
     (response/xexpr
      `(id ,item-id)
      #:mime-type #"application/xml")))
@@ -129,19 +136,19 @@
     (define link (extract-binding/single 'link bindings))
     (define title (extract-binding/single 'title bindings))
     (define username (extract-binding/single 'username bindings))
-    (define feed-list (query-rows pgc "select id from feed where url=$1" link))
+    (define feed-list (query-rows db-conn "select id from feed where url=$1" link))
     (cond
      ((= *user-id* 0)
       (set! *user-id* (get-user-id username))
       ))
     (cond
      ((empty? feed-list)
-      (define insert-vector (query-row pgc "insert into feed(title, url) values ($1,$2) returning id" title link))
+      (define insert-vector (query-row db-conn "insert into feed(title, url) values ($1,$2) returning id" title link))
       (display "id : ")
       (displayln (vector-ref insert-vector 0))
-      (query-exec pgc "insert into rssuser_feed(feed_id, rssuser_id) values ($1,$2);" (vector-ref insert-vector 0) *user-id*))
+      (query-exec db-conn "insert into rssuser_feed(feed_id, rssuser_id) values ($1,$2);" (vector-ref insert-vector 0) *user-id*))
      (else
-      (query-exec pgc "insert into rssuser_feed(feed_id, rssuser_id) values ($1,$2);" (vector-ref (car feed-list) 0) *user-id*)))
+      (query-exec db-conn "insert into rssuser_feed(feed_id, rssuser_id) values ($1,$2);" (vector-ref (car feed-list) 0) *user-id*)))
     (response/xexpr
      `(insert
        (title ,title)
@@ -154,7 +161,7 @@
     (define q (extract-binding/single 'q bindings))
     (response/xexpr
      `(results
-       ,@(for/list (((blog-title item-title url item-date) (search-items pgc q *user-id*)))
+       ,@(for/list (((blog-title item-title url item-date) (search-items db-conn q *user-id*)))
 	  `(result
 	    (blog_title ,blog-title)
 	    (item_date ,(str
@@ -172,7 +179,7 @@
     (response/xexpr
      `(results
        ,@(for/list (((title description url id)
-		     (fetch-unread-items pgc feed-id (number->string  *user-id*))))
+		     (fetch-unread-items db-conn feed-id (number->string  *user-id*))))
 	   `(result
 	     (title ,title)
 	     (description ,description)
@@ -185,9 +192,9 @@
      `(html
        (body
 	,@(for/list (((title url id)
-		     (get-feed-list pgc *user-id*)))
+		     (get-feed-list db-conn *user-id*)))
 	    (let ((unread-count 
-		   (get-unread-count pgc (number->string id) *user-id*)))
+		   (get-unread-count db-conn (number->string id) *user-id*)))
 	      `(p (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")")) 
 		      (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
 		(div ((style "display:none;border:solid 1px black") 
@@ -197,8 +204,8 @@
   (lambda (req)
     (define bindings (request-bindings req))
     (define feed-id (extract-binding/single 'feed_id bindings))
-    (define unread-count (get-unread-count pgc feed-id *user-id*))
-    (define feed-title (fetch-feed-title pgc feed-id))
+    (define unread-count (get-unread-count db-conn feed-id *user-id*))
+    (define feed-title (fetch-feed-title db-conn feed-id))
     (response/xexpr
      `(title ,(str feed-title " (" unread-count ")"))
      #:mime-type #"application/xml")))
@@ -226,7 +233,7 @@
 	  (let* 
 	      ((username (car (regexp-split #rx"-" (client-cookie-value id-cookie))))
 	       (cookieid (second (regexp-split #rx"-" (client-cookie-value id-cookie))))
-	       (query-vector (get-rssuser pgc username)))
+	       (query-vector (get-rssuser db-conn username)))
 	    (displayln 
 	     (str "query-vector : "
 		  (vector-ref query-vector 1) " : "
@@ -252,7 +259,7 @@
 	(let* 
 	    ((username (car (regexp-split #rx"-" (client-cookie-value id-cookie))))
 	     (cookieid (second (regexp-split #rx"-" (client-cookie-value id-cookie))))
-	     (query-vector (get-rssuser pgc username)))
+	     (query-vector (get-rssuser db-conn username)))
 	  (cond
 	   ((equal? cookieid (vector-ref query-vector 2))
 	    (response/xexpr
@@ -284,7 +291,7 @@
 				       (button ((type "button") (onclick ,(str "check_url('"username"',$('#feed_link').val());"))) "Subscribe"))))
 				    (div ((id "subscribe_results"))))
 			       ,@(for/list (((feed-title title link date desc item-id) 
-					     (get-item pgc *user-id*)))
+					     (get-item db-conn *user-id*)))
 				   `(p (div 
 					(a ((href "javascript:void(0)") (class "item_title") 
 					    (id ,(string-append "toggle-" (number->string item-id))) 
