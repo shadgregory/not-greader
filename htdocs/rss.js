@@ -39,6 +39,13 @@ function check_url(username, url) {
 	url:'check-url'
 	,context: document.body
 	,data: {url : url}
+	,error: function(xhr, ajaxoptions, thrownError) {
+	    $('#subscribe_dialog').css('cursor', 'auto');
+	    $('#subscribe_results').append('<div class="ui-state-highlight ui-corner-all" style="margin-top: 20px; padding: 0 .7em;"> \
+                                            <span class="ui-icon ui-icon-alert" style="float: left; margin-right: .3em"> \
+                                            </span><b>There was a problem with the url:</b> ' + 
+					   thrownError + ":" + xhr.status + "</div>");
+	}
 	,success: function(xml) {
 	    $('#subscribe_dialog').css('cursor', 'auto');
 	    $(xml).find('site').each(function(){
