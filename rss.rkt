@@ -16,11 +16,6 @@
 
 (provide/contract (start (request? . -> . response?)))
 
-(define pgc
-  (postgresql-connect #:user "feed"
-		      #:database "feed"
-		      #:password "abc123"))
-
 (define db-conn (virtual-connection 
 		 (connection-pool
 		  (lambda ()
@@ -250,6 +245,37 @@
 
 (define recent-items
   (lambda (req)
+    (define bindings (request-bindings req))
+    (define username (extract-binding/single 'username bindings))
+    (response/xexpr
+     `(div ((id "latest_items"))
+	  (button ((id "opener")) "Subscribe")
+	  (div ((id "subscribe_dialog") (title "subscribe"))
+	       (table 
+		(tr 
+		 (td 
+		  (input ((name "feed_link") (id "feed_link") 
+			  (onkeydown "if (event.keyCode == 13) search();")
+			  (type "text") (size "24"))))
+		 (td 
+		  (button ((type "button") (onclick ,(str "check_url('"username"',$('#feed_link').val());"))) "Subscribe"))))
+	       (div ((id "subscribe_results"))))
+	  ,@(for/list (((feed-title title link date desc item-id) 
+			(get-item db-conn *user-id*)))
+	      `(p (div 
+		   (a ((href "javascript:void(0)") (class "item_title") 
+		       (id ,(string-append "toggle-" (number->string item-id))) 
+		       (onclick ,(str "flip('desc-" item-id "');"))) 
+		      ,(str
+			(sql-timestamp-month date) "/"
+			(sql-timestamp-day date) "/"
+			(sql-timestamp-year date) " " feed-title)))
+		  (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
+		  (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id)))) 
+		       ,(cdata 'cdata-start 'cdata-end desc))))))))
+
+(define home
+  (lambda (req)
     (define cookies (request-cookies req))
     (define id-cookie
       (findf (lambda (c)
@@ -275,34 +301,9 @@
 	       (body ((style "background-color;#e5e5e5;"))
 		     (div ((id "tabs") (class "centered"))
 			  (ul
-			   (li (a ((href "#latest_items")) "Latest Items"))
+			   (li (a ((href ,(str "recent-items?username=" username))) "Latest Items"))
 			   (li (a ((href "search-page")) "Search"))
-			   (li (a ((href "blog-list")) "Blog List")))
-			  (div ((id "latest_items"))
-			       (button ((id "opener")) "Subscribe")
-			       (div ((id "subscribe_dialog") (title "subscribe"))
-				    (table 
-				     (tr 
-				      (td 
-				       (input ((name "feed_link") (id "feed_link") 
-					       (onkeydown "if (event.keyCode == 13) search();")
-					       (type "text") (size "24"))))
-				      (td 
-				       (button ((type "button") (onclick ,(str "check_url('"username"',$('#feed_link').val());"))) "Subscribe"))))
-				    (div ((id "subscribe_results"))))
-			       ,@(for/list (((feed-title title link date desc item-id) 
-					     (get-item db-conn *user-id*)))
-				   `(p (div 
-					(a ((href "javascript:void(0)") (class "item_title") 
-					    (id ,(string-append "toggle-" (number->string item-id))) 
-					    (onclick ,(str "flip('desc-" item-id "');"))) 
-					   ,(str
-					     (sql-timestamp-month date) "/"
-					     (sql-timestamp-day date) "/"
-					     (sql-timestamp-year date) " " feed-title)))
-				       (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
-				       (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id)))) 
-					    ,(cdata 'cdata-start 'cdata-end desc))))))))))
+			   (li (a ((href "blog-list")) "Blog List"))))))))
 	   (else (redirect-to "/"))))
 	(redirect-to "/"))))
 
@@ -311,7 +312,8 @@
 
 (define-values (rss-dispatch rss-url)
   (dispatch-rules
-   (("home") recent-items)
+   (("home") home)
+   (("recent-items") recent-items)
    (("") login-page)
    (("mark-read") mark-read)
    (("search") search)
