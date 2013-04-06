@@ -34,11 +34,13 @@ function add_feed(username, title, link) {
 
 function check_url(username, url) {
     $('#subscribe_results').html('');
+    $('#subscribe_dialog').css('cursor', 'wait');
     $.ajax({
 	url:'check-url'
 	,context: document.body
 	,data: {url : url}
 	,success: function(xml) {
+	    $('#subscribe_dialog').css('cursor', 'auto');
 	    $(xml).find('site').each(function(){
 		var title = $(this).find('title').text();
 		var desc = $(this).find('desc').text();
