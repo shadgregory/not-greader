@@ -115,8 +115,7 @@
     (define description 
       (cond
        ((eq? (se-path* '(description) rss-xexpr) #f)
-	(se-path* '(subtitle) rss-xexpr)
-	)
+	(se-path* '(subtitle) rss-xexpr))
        (else
 	(se-path* '(description) rss-xexpr))))
     (response/xexpr
@@ -134,16 +133,17 @@
     (define feed-list (query-rows db-conn "select id from feed where url=$1" link))
     (cond
      ((= *user-id* 0)
-      (set! *user-id* (get-user-id username))
-      ))
+      (set! *user-id* (get-user-id username))))
     (cond
      ((empty? feed-list)
       (define insert-vector (query-row db-conn "insert into feed(title, url) values ($1,$2) returning id" title link))
       (display "id : ")
       (displayln (vector-ref insert-vector 0))
-      (query-exec db-conn "insert into rssuser_feed(feed_id, rssuser_id) values ($1,$2);" (vector-ref insert-vector 0) *user-id*))
+      (query-exec db-conn "insert into rssuser_feed(feed_id, rssuser_id) values ($1,$2);" 
+		  (vector-ref insert-vector 0) *user-id*))
      (else
-      (query-exec db-conn "insert into rssuser_feed(feed_id, rssuser_id) values ($1,$2);" (vector-ref (car feed-list) 0) *user-id*)))
+      (query-exec db-conn "insert into rssuser_feed(feed_id, rssuser_id) values ($1,$2);" 
+		  (vector-ref (car feed-list) 0) *user-id*)))
     (response/xexpr
      `(insert
        (title ,title)
@@ -167,6 +167,27 @@
 	    (url ,url))))
      #:mime-type #"application/xml")))
 
+(define mark-all-read
+  (lambda (req)
+    (define bindings (request-bindings req))
+    (define feed-id (extract-binding/single 'feed_id bindings))
+    (display "feed-id : ")
+    (displayln feed-id)
+    (display "user-id : ")
+    (displayln *user-id*)
+    (for/list (((title description url id)
+		  (fetch-unread-items db-conn feed-id (number->string  *user-id*))))
+      (display "title : ")
+      (displayln title)
+      (display "id : ")
+      (displayln id)
+      (query-exec db-conn "insert into read_item(item_id,rssuser_id) values($1,$2)"
+		  id *user-id*))
+    (response/xexpr
+     `(feed_id ,feed-id)
+     #:mime-type #"application/xml")))
+
+
 (define retrieve-unread
   (lambda (req)
     (define bindings (request-bindings req))
@@ -185,13 +206,16 @@
   (lambda (req)
     (response/xexpr
      `(html
+       (head (script "main_init();"))
        (body
 	,@(for/list (((title url id)
 		     (get-feed-list db-conn *user-id*)))
 	    (let ((unread-count 
 		   (get-unread-count db-conn (number->string id) *user-id*)))
 	      `(p (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")")) 
-		      (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
+		      (href "javascript:void(0)")) ,(str title " (" unread-count ")"))nbsp
+		      (a ((id "mark_all") (class "mark_all") (href "javascript:void(0);") (onclick ,(str "mark_all_read(" id "," *user-id* ")")))
+			 "Mark all as read")
 		(div ((style "display:none;border:solid 1px black") 
 		      (id ,(str "results_" id))))))))))))
 
@@ -229,12 +253,6 @@
 	      ((username (car (regexp-split #rx"-" (client-cookie-value id-cookie))))
 	       (cookieid (second (regexp-split #rx"-" (client-cookie-value id-cookie))))
 	       (query-vector (get-rssuser db-conn username)))
-	    (displayln 
-	     (str "query-vector : "
-		  (vector-ref query-vector 1) " : "
-		  (vector-ref query-vector 2) " : "
-		  (vector-ref query-vector 3)
-		  ))
 	    (cond
 	     ((equal? cookieid (vector-ref query-vector 2)) 
 	      (begin
@@ -248,31 +266,34 @@
     (define bindings (request-bindings req))
     (define username (extract-binding/single 'username bindings))
     (response/xexpr
-     `(div ((id "latest_items"))
-	  (button ((id "opener")) "Subscribe")
-	  (div ((id "subscribe_dialog") (title "subscribe"))
-	       (table 
-		(tr 
-		 (td 
-		  (input ((name "feed_link") (id "feed_link") 
-			  (onkeydown "if (event.keyCode == 13) search();")
-			  (type "text") (size "24"))))
-		 (td 
-		  (button ((type "button") (onclick ,(str "check_url('"username"',$('#feed_link').val());"))) "Subscribe"))))
-	       (div ((id "subscribe_results"))))
-	  ,@(for/list (((feed-title title link date desc item-id) 
-			(get-item db-conn *user-id*)))
-	      `(p (div 
-		   (a ((href "javascript:void(0)") (class "item_title") 
-		       (id ,(string-append "toggle-" (number->string item-id))) 
-		       (onclick ,(str "flip('desc-" item-id "');"))) 
-		      ,(str
-			(sql-timestamp-month date) "/"
-			(sql-timestamp-day date) "/"
-			(sql-timestamp-year date) " " feed-title)))
-		  (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
-		  (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id)))) 
-		       ,(cdata 'cdata-start 'cdata-end desc))))))))
+     `(html 
+       (head (script "main_init();"))
+       (body
+	(div ((id "latest_items"))
+	     (button ((id "opener")) "Subscribe")
+	     (div ((id "subscribe_dialog") (title "subscribe"))
+		  (table 
+		   (tr 
+		    (td 
+		     (input ((name "feed_link") (id "feed_link") 
+			     (onkeydown "if (event.keyCode == 13) search();")
+			     (type "text") (size "24"))))
+		    (td 
+		     (button ((type "button") (onclick ,(str "check_url('"username"',$('#feed_link').val());"))) "Subscribe"))))
+		  (div ((id "subscribe_results"))))
+	     ,@(for/list (((feed-title title link date desc item-id) 
+			   (get-item db-conn *user-id*)))
+		 `(p (div 
+		      (a ((href "javascript:void(0)") (class "item_title") 
+			  (id ,(string-append "toggle-" (number->string item-id))) 
+			  (onclick ,(str "flip('desc-" item-id "');"))) 
+			 ,(str
+			   (sql-timestamp-month date) "/"
+			   (sql-timestamp-day date) "/"
+			   (sql-timestamp-year date) " " feed-title)))
+		     (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
+		     (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id)))) 
+			  ,(cdata 'cdata-start 'cdata-end desc))))))))))
 
 (define home
   (lambda (req)
@@ -316,6 +337,7 @@
    (("recent-items") recent-items)
    (("") login-page)
    (("mark-read") mark-read)
+   (("mark-all-read") mark-all-read)
    (("search") search)
    (("blog-list") blog-list)
    (("search-page") search-page)

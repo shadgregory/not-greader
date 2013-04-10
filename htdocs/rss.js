@@ -1,6 +1,7 @@
 function main_init () {
     $(function() {
 	$( "input[type=submit], button" ).button();
+	$( ".mark_all" ).button();
 	$('#subscribe_dialog').dialog({
 	    autoOpen: false
 	    ,modal: true
@@ -78,6 +79,36 @@ function flip(desc_id) {
     } else {
 	document.getElementById(desc_id).style.display = 'none';
     }
+}
+
+function mark_all_read(feed_id, user_id) {
+    $.ajax({
+	       url:'mark-all-read'
+	       ,context: document.body
+	       ,data:{feed_id:feed_id,user_id:user_id}
+	       ,success:function() {
+		   }
+    });
+}
+
+function mark_all_read(feed_id, user_id) {
+    $.ajax({
+	       url:'mark-all-read'
+	       ,context: document.body
+	       ,data:{feed_id:feed_id,user_id:user_id}
+	       ,success:function() {
+		   $.ajax({
+			      url : 'get-feed-title'
+			      ,data: {feed_id : feed_id}
+			      ,content: document.body
+			      ,success: function(xml) {
+				  var title = $(xml).find('title').text();
+				  $('#blog_title_'+feed_id).text(title);
+				  document.getElementById("results_"+feed_id).style.display = 'none';
+			      }
+			  });
+	       }
+	   });
 }
 
 function search() {
