@@ -171,16 +171,9 @@
   (lambda (req)
     (define bindings (request-bindings req))
     (define feed-id (extract-binding/single 'feed_id bindings))
-    (display "feed-id : ")
-    (displayln feed-id)
-    (display "user-id : ")
-    (displayln *user-id*)
+
     (for/list (((title description url id)
 		  (fetch-unread-items db-conn feed-id (number->string  *user-id*))))
-      (display "title : ")
-      (displayln title)
-      (display "id : ")
-      (displayln id)
       (query-exec db-conn "insert into read_item(item_id,rssuser_id) values($1,$2)"
 		  id *user-id*))
     (response/xexpr
