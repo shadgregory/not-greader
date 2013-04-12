@@ -172,7 +172,7 @@
     (define bindings (request-bindings req))
     (define feed-id (extract-binding/single 'feed_id bindings))
 
-    (for/list (((title description url id)
+    (for/list (((title description url date id)
 		  (fetch-unread-items db-conn feed-id (number->string  *user-id*))))
       (query-exec db-conn "insert into read_item(item_id,rssuser_id) values($1,$2)"
 		  id *user-id*))
@@ -187,12 +187,16 @@
     (define feed-id (extract-binding/single 'feed_id bindings))
     (response/xexpr
      `(results
-       ,@(for/list (((title description url id)
+       ,@(for/list (((title description url date id)
 		     (fetch-unread-items db-conn feed-id (number->string  *user-id*))))
 	   `(result
 	     (title ,title)
 	     (description ,description)
 	     (url ,url)
+	     (date ,(str
+		     (sql-timestamp-month date) "/"
+		     (sql-timestamp-day date) "/"
+		     (sql-timestamp-year date)))
 	     (id ,(number->string id))))))))
 
 (define blog-list
@@ -205,11 +209,12 @@
 		     (get-feed-list db-conn *user-id*)))
 	    (let ((unread-count 
 		   (get-unread-count db-conn (number->string id) *user-id*)))
-	      `(p (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")")) 
-		      (href "javascript:void(0)")) ,(str title " (" unread-count ")"))nbsp
-		      (a ((id "mark_all") (class "mark_all") (href "javascript:void(0);") (onclick ,(str "mark_all_read(" id "," *user-id* ")")))
-			 "Mark all as read")
-		(div ((style "display:none;border:solid 1px black") 
+	      `(p 
+		(a ((id "mark_all") (class "mark_all") (href "javascript:void(0);") (onclick ,(str "mark_all_read(" id "," *user-id* ")")))
+		   "Mark all as read")nbsp
+		(a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
+		    (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
+		(div ((style "display:none;border:solid 1px black")
 		      (id ,(str "results_" id))))))))))))
 
 (define get-feed-title

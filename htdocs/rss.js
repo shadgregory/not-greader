@@ -152,7 +152,6 @@ function mark_read(feed_id, item_id) {
 }
 
 function retrieve_unread(feed_id) {
-
     if (document.getElementById("results_"+feed_id).style.display == 'none') {
 	document.getElementById("results_"+feed_id).style.display = 'block';
 	$.ajax({
@@ -166,9 +165,10 @@ function retrieve_unread(feed_id) {
 		    var item_desc = $(this).find('description').text();
 		    var item_url = $(this).find('url').text();
 		    var item_id = $(this).find('id').text();
+		    var item_date = $(this).find('date').text();
 		    $('#results_'+feed_id).append('<div style="padding:4px;" id="item-'+item_id+'"><a onclick="mark_read('+feed_id + ","+item_id+');window.open(\'' 
 						  + item_url + '\');" href="javascript:void(0)">' 
-						  + item_title + '</a></div>');
+						  + item_title + '</a>&nbsp;(' + item_date + ')</div>');
 		});
 	    }
 	});
