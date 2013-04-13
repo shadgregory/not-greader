@@ -151,6 +151,16 @@ function mark_read(feed_id, item_id) {
     });
 }
 
+function mark_star(id) {
+    if ($('#star_' + id).is('.ui-state-default')) {
+	$('#star_'+id).attr('class', 'ui-state-highlight ui-corner-all');
+	$.ajax({url:'star-item', data : {item_id:id}});
+    } else {
+	$('#star_'+id).attr('class', 'ui-state-default ui-corner-all');
+	$.ajax({url:'unstar-item', data : {item_id:id}});
+    }
+}
+
 function retrieve_unread(feed_id) {
     if (document.getElementById("results_"+feed_id).style.display == 'none') {
 	document.getElementById("results_"+feed_id).style.display = 'block';
@@ -166,9 +176,17 @@ function retrieve_unread(feed_id) {
 		    var item_url = $(this).find('url').text();
 		    var item_id = $(this).find('id').text();
 		    var item_date = $(this).find('date').text();
-		    $('#results_'+feed_id).append('<div style="padding:4px;" id="item-'+item_id+'"><a onclick="mark_read('+feed_id + ","+item_id+');window.open(\'' 
+		    var item_star = $(this).find('star').text();
+		    var star_str = "ui-state-default ui-corner-all";
+		    if (item_star == "T")
+			star_str = "ui-state-highlight ui-corner-all";
+		    $('#results_'+feed_id).append('<span onclick=\'javascript:mark_star("' + item_id + '");\' id="star_' + 
+						  item_id +
+						  '"class="' + star_str + 
+						  '"><span class="ui-icon ui-icon-star" style="display:inline-block"></span></span><div style="padding:4px;display:inline-block;" id="item-'+
+						  item_id+'"><a onclick="mark_read('+feed_id + ","+item_id+');window.open(\'' 
 						  + item_url + '\');" href="javascript:void(0)">' 
-						  + item_title + '</a>&nbsp;(' + item_date + ')</div>');
+						  + item_title + '</a>&nbsp;(' + item_date + ')</div><br>');
 		});
 	    }
 	});

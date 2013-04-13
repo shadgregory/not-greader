@@ -137,8 +137,6 @@
     (cond
      ((empty? feed-list)
       (define insert-vector (query-row db-conn "insert into feed(title, url) values ($1,$2) returning id" title link))
-      (display "id : ")
-      (displayln (vector-ref insert-vector 0))
       (query-exec db-conn "insert into rssuser_feed(feed_id, rssuser_id) values ($1,$2);" 
 		  (vector-ref insert-vector 0) *user-id*))
      (else
@@ -180,6 +178,25 @@
      `(feed_id ,feed-id)
      #:mime-type #"application/xml")))
 
+(define star-item
+  (lambda (req)
+    (define bindings (request-bindings req))
+    (define item-id (extract-binding/single 'item_id bindings))
+    (query-exec db-conn "insert into star_item(item_id, rssuser_id) values ($1, $2)" (string->number item-id) *user-id*)
+    (response/xexpr
+     `(star 
+       (item_id ,item-id))
+     #:mime-type #"application/xml")))
+
+(define unstar-item
+  (lambda (req)
+    (define bindings (request-bindings req))
+    (define item-id (extract-binding/single 'item_id bindings))
+    (query-exec db-conn "delete from star_item where item_id=$1 and rssuser_id=$2" (string->number item-id) *user-id*)
+    (response/xexpr
+     `(unstar 
+       (item_id ,item-id))
+     #:mime-type #"application/xml")))
 
 (define retrieve-unread
   (lambda (req)
@@ -187,35 +204,47 @@
     (define feed-id (extract-binding/single 'feed_id bindings))
     (response/xexpr
      `(results
-       ,@(for/list (((title description url date id)
+       ,@(for/list (((title description url date id star-id)
 		     (fetch-unread-items db-conn feed-id (number->string  *user-id*))))
 	   `(result
 	     (title ,title)
 	     (description ,description)
 	     (url ,url)
+	     (star ,(if (sql-null? star-id) "F" "T"))
 	     (date ,(str
 		     (sql-timestamp-month date) "/"
 		     (sql-timestamp-day date) "/"
 		     (sql-timestamp-year date)))
 	     (id ,(number->string id))))))))
 
-(define blog-list
+(define star-page
   (lambda (req)
     (response/xexpr
      `(html
-       (head (script "main_init();"))
        (body
-	,@(for/list (((title url id)
-		     (get-feed-list db-conn *user-id*)))
-	    (let ((unread-count 
-		   (get-unread-count db-conn (number->string id) *user-id*)))
-	      `(p 
-		(a ((id "mark_all") (class "mark_all") (href "javascript:void(0);") (onclick ,(str "mark_all_read(" id "," *user-id* ")")))
-		   "Mark all as read")nbsp
-		(a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
-		    (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
-		(div ((style "display:none;border:solid 1px black")
-		      (id ,(str "results_" id))))))))))))
+	,@(for/list (((title description url date id)
+		      (fetch-star-items db-conn (number->string  *user-id*))))
+	    `(p  (span ((onclick ,(str "mark_star(" id ")")) (id ,(str "star_" id)) (class "ui-state-highlight ui-corner-all"))
+		       (span ((class "ui-icon ui-icon-star") (style "display:inline-block"))))
+		 (a ((href "javascript:void(0);") (onclick ,(str "window.open('" url "');"))) ,title))))))))
+
+  (define blog-list
+    (lambda (req)
+      (response/xexpr
+       `(html
+	 (head (script "main_init();"))
+	 (body
+	  ,@(for/list (((title url id)
+			(get-feed-list db-conn *user-id*)))
+	      (let ((unread-count 
+		     (get-unread-count db-conn (number->string id) *user-id*)))
+		`(p 
+		  (a ((id "mark_all") (class "mark_all") (href "javascript:void(0);") (onclick ,(str "mark_all_read(" id "," *user-id* ")")))
+		     "Mark all as read")nbsp
+		     (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
+			 (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
+		     (div ((style "display:none;border:solid 1px black")
+			   (id ,(str "results_" id))))))))))))
 
 (define get-feed-title
   (lambda (req)
@@ -279,9 +308,15 @@
 		    (td 
 		     (button ((type "button") (onclick ,(str "check_url('"username"',$('#feed_link').val());"))) "Subscribe"))))
 		  (div ((id "subscribe_results"))))
-	     ,@(for/list (((feed-title title link date desc item-id) 
+	     ,@(for/list (((feed-title title link date desc item-id star-id) 
 			   (get-item db-conn *user-id*)))
 		 `(p (div 
+		      (span ((onclick ,(str "mark_star(" item-id ")")) (id ,(str "star_" item-id)) 
+			     (class 
+			       ,(cond ((sql-null? star-id) 
+				       "ui-state-default ui-corner-all")
+				      (else "ui-state-highlight ui-corner-all"))))
+		       (span ((class "ui-icon ui-icon-star") (style "display:inline-block"))))
 		      (a ((href "javascript:void(0)") (class "item_title") 
 			  (id ,(string-append "toggle-" (number->string item-id))) 
 			  (onclick ,(str "flip('desc-" item-id "');"))) 
@@ -322,7 +357,9 @@
 			  (ul
 			   (li (a ((href ,(str "recent-items?username=" username))) "Latest Items"))
 			   (li (a ((href "search-page")) "Search"))
-			   (li (a ((href "blog-list")) "Blog List"))))))))
+			   (li (a ((href "blog-list")) "Blog List"))
+			   (li (a ((href "star-page")) "Starred"))
+			   ))))))
 	   (else (redirect-to "/"))))
 	(redirect-to "/"))))
 
@@ -343,6 +380,9 @@
    (("check-url") check-url)
    (("add-feed") add-feed)
    (("validate-user") validate-user)
+   (("star-item") star-item)
+   (("star-page") star-page)
+   (("unstar-item") unstar-item)
    (("retrieve-unread") retrieve-unread)))
 
 (serve/servlet start

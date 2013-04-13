@@ -39,3 +39,8 @@ create table read_items(
     item_id integer references item(id),
     rssuser_id integer references rssuser(id)
 );
+create table star_item(
+    rssuser_id integer references rssuser(id), 
+    item_id integer references item(id));
+
+alter table star_item add constraint unique_rssuser_item unique(item_id, rssuser_id);
