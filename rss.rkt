@@ -172,7 +172,7 @@
     (define bindings (request-bindings req))
     (define feed-id (extract-binding/single 'feed_id bindings))
 
-    (for/list (((title description url date id)
+    (for/list (((title description url date id star-id)
 		  (fetch-unread-items db-conn feed-id (number->string  *user-id*))))
       (query-exec db-conn "insert into read_item(item_id,rssuser_id) values($1,$2)"
 		  id *user-id*))
