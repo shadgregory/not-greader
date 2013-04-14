@@ -87,16 +87,6 @@ function mark_all_read(feed_id, user_id) {
 	       ,context: document.body
 	       ,data:{feed_id:feed_id,user_id:user_id}
 	       ,success:function() {
-		   }
-    });
-}
-
-function mark_all_read(feed_id, user_id) {
-    $.ajax({
-	       url:'mark-all-read'
-	       ,context: document.body
-	       ,data:{feed_id:feed_id,user_id:user_id}
-	       ,success:function() {
 		   $.ajax({
 			      url : 'get-feed-title'
 			      ,data: {feed_id : feed_id}
@@ -113,21 +103,29 @@ function mark_all_read(feed_id, user_id) {
 
 function search() {
     var q = $('#rss_search').val();
+    $('#rss_search').css('cursor', 'wait');
     $.ajax({
 	url: 'search'
 	,data: {q:q}
 	,context: document.body
 	,success: function(xml){
 	    $('#results').html('');
+	    $('#rss_search').css('cursor', 'auto');
 	    $(xml).find("result").each(function(){
-		var blog_title = $(this).find('blog_title').text();
-		var item_title = $(this).find('item_title').text();
-		var item_date = $(this).find('item_date').text();
-		var url = $(this).find('url').text();
-		$('#results').append('<p><b>' + blog_title + '</b> ' +
-				     '<a href="javascript:void(0)" onclick="window.open(\'' + url + '\')">' + 
-				     item_title + " (" + item_date +
-				     ')</a></p>');
+					   var blog_title = $(this).find('blog_title').text();
+					   var item_title = $(this).find('item_title').text();
+					   var item_date = $(this).find('item_date').text();
+					   var item_id = $(this).find('item_id').text();
+					   var url = $(this).find('url').text();
+					   var item_star = $(this).find('star').text();
+					   var star_str = "ui-state-default ui-corner-all";
+					   if (item_star == "T")
+					       star_str = "ui-state-highlight ui-corner-all";
+					   $('#results').append('<p><span onclick="mark_star('+ item_id + ')" id="star_'+ item_id + 
+								'" class="'+star_str+'"><span class="ui-icon ui-icon-star" style="display:inline-block"></span></span>'
+								+'<b>' + blog_title + '</b> ' +
+								'<a href="javascript:void(0)" onclick="window.open(\'' + url + '\')">' + 
+								item_title + " (" + item_date + ')</a></p>');
 	    });
 	}
     });
@@ -180,13 +178,11 @@ function retrieve_unread(feed_id) {
 		    var star_str = "ui-state-default ui-corner-all";
 		    if (item_star == "T")
 			star_str = "ui-state-highlight ui-corner-all";
-		    $('#results_'+feed_id).append('<span onclick=\'javascript:mark_star("' + item_id + '");\' id="star_' + 
-						  item_id +
-						  '"class="' + star_str + 
-						  '"><span class="ui-icon ui-icon-star" style="display:inline-block"></span></span><div style="padding:4px;display:inline-block;" id="item-'+
-						  item_id+'"><a onclick="mark_read('+feed_id + ","+item_id+');window.open(\'' 
+		    $('#results_'+feed_id).append('<div id="item-'+item_id+'" style="display:inline-block"><span onclick=\'javascript:mark_star("' + 
+						  item_id + '");\' id="star_' + item_id + '"class="' + star_str + 
+						  '"><span class="ui-icon ui-icon-star" style="display:inline-block"></span></span><div style="padding:4px;display:inline-block;"><a onclick="mark_read('+feed_id + ","+item_id+');window.open(\'' 
 						  + item_url + '\');" href="javascript:void(0)">' 
-						  + item_title + '</a>&nbsp;(' + item_date + ')</div><br>');
+						  + item_title + '</a>&nbsp;(' + item_date + ')</div></div><br>');
 		});
 	    }
 	});

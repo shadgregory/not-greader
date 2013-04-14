@@ -4,10 +4,11 @@
 (define search-items
   (lambda (pgc query user-id)
     (in-query pgc  
-	      "select feed.title, item.title, item.url, item.date AS item_title from feed 
+	      "select feed.title AS feed_title, item.title AS item_title, item.url, item.date, item.id, star_item.item_id from feed 
        inner join rssuser_feed on rssuser_feed.feed_id = feed.id 
        inner join rssuser on rssuser_feed.rssuser_id = rssuser.id 
        inner join item on item.feed_id = feed.id 
+       left outer join star_item on star_item.item_id = item.id and star_item.rssuser_id = rssuser.id
        where rssuser.id=$1 and (lower(item.title) ~ lower($2) or lower(item.description) ~ lower($3)) order by item.date desc"
 	      user-id query query)))
 
@@ -25,7 +26,7 @@
 
 (define fetch-star-items
   (lambda (pgc user-id)
-    (in-query pgc "select item.title, item.description, item.url, item.date, item.id, feed.titlefrom item 
+    (in-query pgc "select item.title, item.description, item.url, item.date, item.id from item 
                inner join star_item on star_item.item_id = item.id where star_item.rssuser_id = $1;"
 	      (string->number user-id))))
 

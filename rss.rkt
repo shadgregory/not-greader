@@ -154,9 +154,11 @@
     (define q (extract-binding/single 'q bindings))
     (response/xexpr
      `(results
-       ,@(for/list (((blog-title item-title url item-date) (search-items db-conn q *user-id*)))
+       ,@(for/list (((blog-title item-title url item-date item-id star-id) (search-items db-conn q *user-id*)))
 	  `(result
 	    (blog_title ,blog-title)
+	    (item_id ,(number->string item-id))
+	    (star ,(if (sql-null? star-id) "F" "T"))
 	    (item_date ,(str
 			  (sql-timestamp-month item-date) "/"
 			  (sql-timestamp-day item-date) "/"
