@@ -29,7 +29,7 @@
   (lambda (username)
     (vector-ref (get-rssuser db-conn username) 3)))
 
-; string-append replacement macro
+;; string-append replacement macro
 (define-syntax str
   (syntax-rules ()
     ((_) "")
@@ -42,6 +42,22 @@
        (else
 	(string-append string1 (str . rest)))))))
 
+;;this macro checks the user's cookie before rendering the page
+(define-syntax-rule (define-page (id req) . body)
+  (begin
+    (define id 
+      (lambda (req)
+	(define cookies (request-cookies req))
+	(define id-cookie
+	  (findf (lambda (c)
+		   (string=? "id" (client-cookie-name c)))
+		 cookies))
+	(if (eq? (check-cookie req) #t)
+	    (begin . body)
+	    (response/full 401 #"Unauthorized" (current-seconds) TEXT/HTML-MIME-TYPE 
+		      (list (make-header #"Refresh" #"4; /")) 
+		      (list #"<html><body><p>There was an authentication problem</p></body></html>")))))))
+
 (define user-formlet
   (formlet
    (table
@@ -50,6 +66,14 @@
     (tr (td "Password:")
         (td ,{(to-string (required (password-input))) . => . password})))
    (list username password)))
+
+(define logout
+  (lambda (req)
+    (redirect-to "/"
+		 see-other
+		 #:headers (list (cookie->header (make-cookie "id" "" 
+							      #:max-age 0 
+							      #:secure? #t))))))
 
 (define validate-user
   (lambda (req)
@@ -83,7 +107,7 @@
 	  (link ((rel "stylesheet") (href "rss.css")) " ")
 	  (script ((src "jquery-1.9.1.min.js")) " ")
 	  (script ((src "jquery-ui.min.js"))" ")
-	  (script "$function() {$('input[type=submit]').button();}"))
+	  (script "$(function() {$('input[type=submit]').button();});"))
 	 (body
 	  ((style "background-color;#e5e5e5;"))
 	  (div ((class "centered"))
@@ -91,14 +115,13 @@
 		     ,@(formlet-display user-formlet)
 		     (input ((type "submit"))))))))))))
 
-(define mark-read
-  (lambda (req)
-    (define bindings (request-bindings req))
-    (define item-id (extract-binding/single 'item_id bindings))
-    (query-exec db-conn "insert into read_item(item_id, rssuser_id) values ($1,$2)" (string->number item-id) *user-id*)
-    (response/xexpr
-     `(id ,item-id)
-     #:mime-type #"application/xml")))
+(define-page (mark-read req)
+    (let* ((bindings (request-bindings req))
+	   (item-id (extract-binding/single 'item_id bindings)))
+      (query-exec db-conn "insert into read_item(item_id, rssuser_id) values ($1,$2)" (string->number item-id) *user-id*)
+      (response/xexpr
+       `(id ,item-id)
+       #:mime-type #"application/xml")))
 
 (define check-url
   (lambda (req)
@@ -124,13 +147,12 @@
        (desc ,description))
      #:mime-type #"application/xml")))
 
-(define add-feed
-  (lambda (req)
-    (define bindings (request-bindings req))
-    (define link (extract-binding/single 'link bindings))
-    (define title (extract-binding/single 'title bindings))
-    (define username (extract-binding/single 'username bindings))
-    (define feed-list (query-rows db-conn "select id from feed where url=$1" link))
+(define-page (add-feed req)
+  (let* ((bindings (request-bindings req))
+	 (link (extract-binding/single 'link bindings))
+	 (title (extract-binding/single 'title bindings))
+	 (username (extract-binding/single 'username bindings))
+	 (feed-list (query-rows db-conn "select id from feed where url=$1" link)))
     (cond
      ((= *user-id* 0)
       (set! *user-id* (get-user-id username))))
@@ -148,23 +170,22 @@
        (link ,link))
      #:mime-type #"application.xml")))
 
-(define search 
-  (lambda (req)
-    (define bindings (request-bindings req))
-    (define q (extract-binding/single 'q bindings))
+(define-page (search req)
+  (let* ((bindings (request-bindings req))
+	 (q (extract-binding/single 'q bindings)))
     (response/xexpr
      `(results
        ,@(for/list (((blog-title item-title url item-date item-id star-id) (search-items db-conn q *user-id*)))
-	  `(result
-	    (blog_title ,blog-title)
-	    (item_id ,(number->string item-id))
-	    (star ,(if (sql-null? star-id) "F" "T"))
-	    (item_date ,(str
+	   `(result
+	     (blog_title ,blog-title)
+	     (item_id ,(number->string item-id))
+	     (star ,(if (sql-null? star-id) "F" "T"))
+	     (item_date ,(str
 			  (sql-timestamp-month item-date) "/"
 			  (sql-timestamp-day item-date) "/"
 			  (sql-timestamp-year item-date)))
-	    (item_title ,item-title)
-	    (url ,url))))
+	     (item_title ,item-title)
+	     (url ,url))))
      #:mime-type #"application/xml")))
 
 (define mark-all-read
@@ -230,23 +251,23 @@
 		       (span ((class "ui-icon ui-icon-star") (style "display:inline-block"))))
 		 (a ((href "javascript:void(0);") (onclick ,(str "window.open('" url "');"))) ,title))))))))
 
-  (define blog-list
-    (lambda (req)
-      (response/xexpr
-       `(html
-	 (head (script "main_init();"))
-	 (body
-	  ,@(for/list (((title url id)
-			(get-feed-list db-conn *user-id*)))
-	      (let ((unread-count 
-		     (get-unread-count db-conn (number->string id) *user-id*)))
-		`(p 
-		  (a ((id "mark_all") (class "mark_all") (href "javascript:void(0);") (onclick ,(str "mark_all_read(" id "," *user-id* ")")))
-		     "Mark all as read")nbsp
-		     (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
-			 (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
-		     (div ((style "display:none;border:solid 1px black")
-			   (id ,(str "results_" id))))))))))))
+(define blog-list
+  (lambda (req)
+    (response/xexpr
+     `(html
+       (head (script "main_init();"))
+       (body
+	,@(for/list (((title url id)
+		      (get-feed-list db-conn *user-id*)))
+	    (let ((unread-count 
+		   (get-unread-count db-conn (number->string id) *user-id*)))
+	      `(p 
+		(a ((id "mark_all") (class "mark_all") (href "javascript:void(0);") (onclick ,(str "mark_all_read(" id "," *user-id* ")")))
+		   "Mark all as read")nbsp
+		   (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
+		       (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
+		   (div ((style "display:none;border:solid 1px black")
+			 (id ,(str "results_" id))))))))))))
 
 (define get-feed-title
   (lambda (req)
@@ -312,12 +333,13 @@
 		  (div ((id "subscribe_results"))))
 	     ,@(for/list (((feed-title title link date desc item-id star-id) 
 			   (get-item db-conn *user-id*)))
-		 `(p (div 
-		      (span ((onclick ,(str "mark_star(" item-id ")")) (id ,(str "star_" item-id)) 
+		 `(p (div
+		      (span ((onclick ,(str "mark_star(" item-id ")")) 
+			     (id ,(str "star_" item-id)) 
 			     (class 
 			       ,(cond ((sql-null? star-id) 
-				       "ui-state-default ui-corner-all")
-				      (else "ui-state-highlight ui-corner-all"))))
+				       "ui-state-default")
+				      (else "ui-state-highlight"))))
 		       (span ((class "ui-icon ui-icon-star") (style "display:inline-block"))))
 		      (a ((href "javascript:void(0)") (class "item_title") 
 			  (id ,(string-append "toggle-" (number->string item-id))) 
@@ -330,16 +352,14 @@
 		     (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id)))) 
 			  ,(cdata 'cdata-start 'cdata-end desc))))))))))
 
-(define home
-  (lambda (req)
-    (define cookies (request-cookies req))
-    (define id-cookie
-      (findf (lambda (c)
-               (string=? "id" (client-cookie-name c)))
-             cookies))
-    (if (eq? (check-cookie req) #t)
+(define-page (home req)
 	(let* 
-	    ((username (car (regexp-split #rx"-" (client-cookie-value id-cookie))))
+	    ((cookies (request-cookies req))
+	     (id-cookie
+	       (findf (lambda (c)
+			(string=? "id" (client-cookie-name c)))
+		      cookies))
+	     (username (car (regexp-split #rx"-" (client-cookie-value id-cookie))))
 	     (cookieid (second (regexp-split #rx"-" (client-cookie-value id-cookie))))
 	     (query-vector (get-rssuser db-conn username)))
 	  (cond
@@ -348,22 +368,23 @@
 	     `(html
 	       (head
 		(title "Shad's Reader")
-		(script ((type "text/javascript")(src "rss.js")) " ")
 		(link ((rel "stylesheet") (href "jquery-ui.css")) " ")
 		(link ((rel "stylesheet") (href "rss.css")) " ")
-		(script ((src "jquery-1.9.1.min.js")) " ")
+		(script ((src "jquery-1.9.1.min.js"))" ")
 		(script ((src "jquery-ui.min.js"))" ")
+		(script ((type "text/javascript")(src "rss.js")) " ")
 		(script "$(function() {$( '#tabs' ).tabs();});main_init();"))
 	       (body ((style "background-color;#e5e5e5;"))
 		     (div ((id "tabs") (class "centered"))
+			   (div ((style "border:solid 1px black;text-align:right;padding:5px;"))
+			        (a ((href "logout")) ,(str "Logout " username)))
 			  (ul
 			   (li (a ((href ,(str "recent-items?username=" username))) "Latest Items"))
 			   (li (a ((href "search-page")) "Search"))
 			   (li (a ((href "blog-list")) "Blog List"))
 			   (li (a ((href "star-page")) "Starred"))
 			   ))))))
-	   (else (redirect-to "/"))))
-	(redirect-to "/"))))
+	   (else (redirect-to "/")))))
 
 (define (start request)
   (rss-dispatch request))
@@ -381,6 +402,7 @@
    (("get-feed-title") get-feed-title)
    (("check-url") check-url)
    (("add-feed") add-feed)
+   (("logout") logout)
    (("validate-user") validate-user)
    (("star-item") star-item)
    (("star-page") star-page)
