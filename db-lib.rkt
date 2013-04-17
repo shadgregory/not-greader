@@ -21,7 +21,7 @@
        inner join item on item.feed_id = feed.id 
        left outer join star_item on star_item.item_id = item.id and star_item.rssuser_id = rssuser.id
        where rssuser.id=$1 and feed.id = $2 and (lower(item.title) ~ lower($3) or lower(item.description) ~ lower($4)) order by item.date desc"
-		feed-id user-id query query)))))
+		user-id feed-id query query)))))
 
 (define fetch-unread-items
   (lambda (pgc feed-id user-id)
@@ -72,7 +72,7 @@
        inner join rssuser on rssuser.id = rssuser_feed.rssuser_id
        left outer join read_item on read_item.item_id = item.id and read_item.rssuser_id = rssuser.id
        left outer join star_item on star_item.item_id = item.id and star_item.rssuser_id = rssuser.id
-       where item.date > (now () - interval '20 hour') and rssuser.id = $1 and read_item.item_id is null and item.read = false order by item.date desc" 
+       where item.date > (now () - interval '22 hour') and rssuser.id = $1 and read_item.item_id is null and item.read = false order by item.date desc" 
 	      user-id)))
 
 (define get-rssuser

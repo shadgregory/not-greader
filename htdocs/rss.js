@@ -106,6 +106,7 @@ function search() {
     var feed_id = $('#feed_select option:selected').val();
     $('#rss_search').css('cursor', 'wait');
     $('#feed_select').css('cursor', 'wait');
+    $('#search_button').css('cursor', 'wait');
     $.ajax({
 	url: 'search'
 	,data: {q:q,feed:feed_id}
@@ -114,6 +115,7 @@ function search() {
 	    $('#results').html('');
 	    $('#rss_search').css('cursor', 'auto');
 	    $('#feed_select').css('cursor', 'auto');
+	    $('#search_button').css('cursor', 'auto');
 	    $(xml).find("result").each(function(){
 					   var blog_title = $(this).find('blog_title').text();
 					   var item_title = $(this).find('item_title').text();

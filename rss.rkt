@@ -286,17 +286,17 @@
   (lambda (req)
     (response/xexpr
      `(html 
-       (head (script "$('button').button({icons:{primary:'ui-icon-search'},text:false,label:'Search'});"))
+       (head (script "$('#search_button').button({icons:{primary:'ui-icon-search'},text:false,label:'Search'});"))
        (body
 	(input ((name "rss_search") (id "rss_search") (onkeydown "if (event.keyCode == 13) search();")
 		(type "text") (size "24")))
 	(select ((name "feed_select") (id "feed_select"))
 		(option ((value "0")) "All")
 	,@(for/list (((title id)
-		      (in-query db-conn "select title,id from feed")
+		      (in-query db-conn "select title,id from feed order by title")
 		      ))
 	    `(option ((value ,(number->string id))) ,title)))
-	(button ((type "button") (onclick "search();")))
+	(button ((type "button") (id "search_button") (onclick "search();")))
 	(div ((id "results"))))))))
 
 (define check-cookie
@@ -427,6 +427,7 @@
 	       #:servlet-regexp #rx""
 	       #:ssl-cert "server-cert.pem"
 	       #:ssl-key "private-key.pem"
+	       #:log-file "rss.log"
 	       #:extra-files-paths (list 
 				    (build-path "./htdocs"))
 	       #:servlet-path "")
