@@ -330,7 +330,7 @@
        (body
 	(div ((id "latest_items"))
 	     (button ((id "opener")) "Subscribe")
-	     (div ((id "subscribe_dialog") (title "subscribe"))
+	     (div ((id "subscribe_dialog") (title "Subscribe"))
 		  (table 
 		   (tr 
 		    (td 
@@ -338,7 +338,7 @@
 			     (onkeydown "if (event.keyCode == 13) search();")
 			     (type "text") (size "24"))))
 		    (td 
-		     (button ((type "button") (onclick ,(str "check_url('"username"',$('#feed_link').val());"))) "Subscribe"))))
+		     (button ((type "button") (id "subscribe_button") (onclick ,(str "check_url('"username"',$('#feed_link').val());"))) "Subscribe"))))
 		  (div ((id "subscribe_results"))))
 	     ,@(for/list (((feed-title title link date desc item-id star-id) 
 			   (get-item db-conn *user-id*)))
