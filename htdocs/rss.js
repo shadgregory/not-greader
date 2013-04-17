@@ -103,14 +103,17 @@ function mark_all_read(feed_id, user_id) {
 
 function search() {
     var q = $('#rss_search').val();
+    var feed_id = $('#feed_select option:selected').val();
     $('#rss_search').css('cursor', 'wait');
+    $('#feed_select').css('cursor', 'wait');
     $.ajax({
 	url: 'search'
-	,data: {q:q}
+	,data: {q:q,feed:feed_id}
 	,context: document.body
 	,success: function(xml){
 	    $('#results').html('');
 	    $('#rss_search').css('cursor', 'auto');
+	    $('#feed_select').css('cursor', 'auto');
 	    $(xml).find("result").each(function(){
 					   var blog_title = $(this).find('blog_title').text();
 					   var item_title = $(this).find('item_title').text();

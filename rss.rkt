@@ -71,9 +71,10 @@
   (lambda (req)
     (redirect-to "/"
 		 see-other
-		 #:headers (list (cookie->header (make-cookie "id" "" 
-							      #:max-age 0 
-							      #:secure? #t))))))
+		 #:headers (list (cookie->header 
+				  (make-cookie "id" "" 
+					       #:max-age 0 
+					       #:secure? #t))))))
 
 (define validate-user
   (lambda (req)
@@ -172,10 +173,12 @@
 
 (define-page (search req)
   (let* ((bindings (request-bindings req))
+	 (feed-id (extract-binding/single 'feed bindings))
 	 (q (extract-binding/single 'q bindings)))
     (response/xexpr
      `(results
-       ,@(for/list (((blog-title item-title url item-date item-id star-id) (search-items db-conn q *user-id*)))
+       ,@(for/list (((blog-title item-title url item-date item-id star-id) 
+		     (search-items db-conn q (string->number feed-id) *user-id*)))
 	   `(result
 	     (blog_title ,blog-title)
 	     (item_id ,(number->string item-id))
@@ -283,11 +286,17 @@
   (lambda (req)
     (response/xexpr
      `(html 
-       (head (script "$('button').button();"))
+       (head (script "$('button').button({icons:{primary:'ui-icon-search'},text:false,label:'Search'});"))
        (body
 	(input ((name "rss_search") (id "rss_search") (onkeydown "if (event.keyCode == 13) search();")
-		(type "text") (size "20")))
-	(button ((type "button") (onclick "search();")) "Search")
+		(type "text") (size "24")))
+	(select ((name "feed_select") (id "feed_select"))
+		(option ((value "0")) "All")
+	,@(for/list (((title id)
+		      (in-query db-conn "select title,id from feed")
+		      ))
+	    `(option ((value ,(number->string id))) ,title)))
+	(button ((type "button") (onclick "search();")))
 	(div ((id "results"))))))))
 
 (define check-cookie
