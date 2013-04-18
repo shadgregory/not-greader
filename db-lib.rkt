@@ -79,4 +79,11 @@
   (lambda (pgc username) 
     (query-row pgc "select password,username,cookieid,id from rssuser where username=$1" username)))
 
+(define get-rssuser-feed
+  (lambda (pgc user-id)
+    (in-query pgc
+	      "select title, id from feed right outer join rssuser_feed on feed.id = rssuser_feed.feed_id 
+       where rssuser_feed.rssuser_id = $1 order by title" 
+	      user-id)))
+
 (provide (all-defined-out))
