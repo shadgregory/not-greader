@@ -142,7 +142,7 @@ function mark_read(feed_id, item_id) {
 	,data : {item_id : item_id} 
 	,context: document.body
     });
-    $('#item-'+item_id).hide();
+    $('#item-'+item_id).delay(5000).hide(0);
     $.ajax({
 	url : 'get-feed-title'
 	,data: {feed_id : feed_id}
