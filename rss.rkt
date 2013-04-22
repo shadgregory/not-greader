@@ -55,8 +55,8 @@
 	(if (eq? (check-cookie req) #t)
 	    (begin . body)
 	    (response/full 401 #"Unauthorized" (current-seconds) TEXT/HTML-MIME-TYPE 
-		      (list (make-header #"Refresh" #"4; /")) 
-		      (list #"<html><body><p>There was an authentication problem</p></body></html>")))))))
+		      (list (make-header #"Refresh" #"5; /")) 
+		      (list #"<html><body><p>You will be redirected to the login page. If you aren't forwarded, click <a href='/'>here</a>.</p></body></html>")))))))
 
 (define user-formlet
   (formlet
@@ -356,8 +356,11 @@
 			   (sql-timestamp-day date) "/"
 			   (sql-timestamp-year date) " " feed-title)))
 		     (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
-		     (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id)))) 
-			  ,(cdata 'cdata-start 'cdata-end desc))))))))))
+		     (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id))))
+			  ,(cond
+			    ((sql-null? desc) "")
+			    (else
+			     (cdata 'cdata-start 'cdatatend desc))))))))))))
 
 (define-page (home req)
 	(let* 
