@@ -166,7 +166,9 @@ function mark_read(feed_id, item_id) {
 	,data : {item_id : item_id} 
 	,context: document.body
     });
-    $('#item-'+item_id).delay(5000).hide(0);
+    $('#item-'+item_id).css('color', "grey");
+    $('#item-'+item_id+'-href').removeAttr('href');
+    $('#item-'+item_id+'-href').css('color', "grey");
     $.ajax({
 	url : 'get-feed-title'
 	,data: {feed_id : feed_id}
@@ -209,7 +211,7 @@ function retrieve_unread(feed_id) {
 			star_str = "ui-state-highlight ui-corner-all";
 		    $('#results_'+feed_id).append('<div id="item-'+item_id+'" style="display:inline-block"><span onclick=\'javascript:mark_star("' + 
 						  item_id + '");\' id="star_' + item_id + '"class="' + star_str + 
-						  '"><span class="ui-icon ui-icon-star" style="display:inline-block"></span></span><div style="padding:4px;display:inline;"><a onclick="mark_read('+feed_id + ","+item_id+');window.open(\'' 
+						  '"><span class="ui-icon ui-icon-star" style="display:inline-block"></span></span><div style="padding:4px;display:inline;"><a id="item-'+item_id+'-href" onclick="mark_read('+feed_id + ","+item_id+');window.open(\'' 
 						  + item_url + '\');" href="javascript:void(0)">' 
 						  + item_title + '</a>&nbsp;(' + item_date + ')</div></div><br>');
 		});
