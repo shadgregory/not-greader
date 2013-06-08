@@ -2,6 +2,7 @@ function main_init () {
     $(function() {
 	$( "input[type=submit], button" ).button();
 	$( ".mark_all" ).button();
+	$( ".mark_week" ).button();
 	$('#subscribe_dialog').dialog({
 	    autoOpen: false
 	    ,modal: true
@@ -101,6 +102,25 @@ function mark_all_read(feed_id, user_id) {
 	   });
 }
 
+function mark_read_week(feed_id, user_id) {
+    $.ajax({
+	       url:'mark-read-week'
+	       ,context: document.body
+	       ,data:{feed_id:feed_id,user_id:user_id}
+	       ,success:function() {
+		   $.ajax({
+			      url : 'get-feed-title'
+			      ,data: {feed_id : feed_id}
+			      ,content: document.body
+			      ,success: function(xml) {
+				  var title = $(xml).find('title').text();
+				  $('#blog_title_'+feed_id).text(title);
+				  document.getElementById("results_"+feed_id).style.display = 'none';
+			      }
+			  });
+	       }
+	   });
+}
 function search() {
     var q = $('#rss_search').val();
     var feed_id = $('#feed_select option:selected').val();
@@ -116,22 +136,26 @@ function search() {
 	    $('#rss_search').css('cursor', 'auto');
 	    $('#feed_select').css('cursor', 'auto');
 	    $('#search_button').css('cursor', 'auto');
-	    $(xml).find("result").each(function(){
-					   var blog_title = $(this).find('blog_title').text();
-					   var item_title = $(this).find('item_title').text();
-					   var item_date = $(this).find('item_date').text();
-					   var item_id = $(this).find('item_id').text();
-					   var url = $(this).find('url').text();
-					   var item_star = $(this).find('star').text();
-					   var star_str = "ui-state-default ui-corner-all";
-					   if (item_star == "T")
-					       star_str = "ui-state-highlight ui-corner-all";
-					   $('#results').append('<p><span onclick="mark_star('+ item_id + ')" id="star_'+ item_id + 
-								'" class="'+star_str+'"><span class="ui-icon ui-icon-star" style="display:inline-block"></span></span>'
-								+'<b>' + blog_title + '</b> ' +
-								'<a href="javascript:void(0)" onclick="window.open(\'' + url + '\')">' + 
-								item_title + " (" + item_date + ')</a></p>');
-	    });
+		if ($(xml).find("result").length > 0) {
+		    $(xml).find("result").each(function(){
+			var blog_title = $(this).find('blog_title').text();
+			var item_title = $(this).find('item_title').text();
+			var item_date = $(this).find('item_date').text();
+			var item_id = $(this).find('item_id').text();
+			var url = $(this).find('url').text();
+			var item_star = $(this).find('star').text();
+			var star_str = "ui-state-default ui-corner-all";
+			if (item_star == "T")
+			    star_str = "ui-state-highlight ui-corner-all";
+			$('#results').append('<p><span onclick="mark_star('+ item_id + ')" id="star_'+ item_id + 
+					     '" class="'+star_str+'"><span class="ui-icon ui-icon-star" style="display:inline-block"></span></span>'
+					     +'<b>' + blog_title + '</b> ' +
+					     '<a href="javascript:void(0)" onclick="window.open(\'' + url + '\')">' + 
+					     item_title + " (" + item_date + ')</a></p>');
+		    });
+		} else {
+		    $('#results').append('<p><div class="ui-state-highlight ui-corner-all" style="margin-top: 20px; padding: 0 .7em; border:0px;"><span class="ui-icon ui-icon-alert" style="float: left; margin-right: .3em;"></span><b>No results found.</b></div></p>');
+		}
 	}
     });
 }
@@ -142,7 +166,9 @@ function mark_read(feed_id, item_id) {
 	,data : {item_id : item_id} 
 	,context: document.body
     });
-    $('#item-'+item_id).hide();
+    $('#item-'+item_id).css('color', "grey");
+    $('#item-'+item_id+'-href').removeAttr('href');
+    $('#item-'+item_id+'-href').css('color', "grey");
     $.ajax({
 	url : 'get-feed-title'
 	,data: {feed_id : feed_id}
@@ -185,7 +211,7 @@ function retrieve_unread(feed_id) {
 			star_str = "ui-state-highlight ui-corner-all";
 		    $('#results_'+feed_id).append('<div id="item-'+item_id+'" style="display:inline-block"><span onclick=\'javascript:mark_star("' + 
 						  item_id + '");\' id="star_' + item_id + '"class="' + star_str + 
-						  '"><span class="ui-icon ui-icon-star" style="display:inline-block"></span></span><div style="padding:4px;display:inline-block;"><a onclick="mark_read('+feed_id + ","+item_id+');window.open(\'' 
+						  '"><span class="ui-icon ui-icon-star" style="display:inline-block"></span></span><div style="padding:4px;display:inline;"><a id="item-'+item_id+'-href" onclick="mark_read('+feed_id + ","+item_id+');window.open(\'' 
 						  + item_url + '\');" href="javascript:void(0)">' 
 						  + item_title + '</a>&nbsp;(' + item_date + ')</div></div><br>');
 		});

@@ -50,13 +50,13 @@
 	(define cookies (request-cookies req))
 	(define id-cookie
 	  (findf (lambda (c)
-		   (string=? "id" (client-cookie-name c)))
+		   (string=? "notgreader-id" (client-cookie-name c)))
 		 cookies))
 	(if (eq? (check-cookie req) #t)
 	    (begin . body)
 	    (response/full 401 #"Unauthorized" (current-seconds) TEXT/HTML-MIME-TYPE 
-		      (list (make-header #"Refresh" #"4; /")) 
-		      (list #"<html><body><p>There was an authentication problem</p></body></html>")))))))
+		      (list (make-header #"Refresh" #"5; /")) 
+		      (list #"<html><body><p>You will be redirected to the login page. If you are not forwarded, click <a href='/'>here</a>.</p></body></html>")))))))
 
 (define user-formlet
   (formlet
@@ -72,7 +72,7 @@
     (redirect-to "/"
 		 see-other
 		 #:headers (list (cookie->header 
-				  (make-cookie "id" "" 
+				  (make-cookie "notgreader-id" "" 
 					       #:max-age 0 
 					       #:secure? #t))))))
 
@@ -82,7 +82,9 @@
 	   (password (second (formlet-process user-formlet req)))
 	   (cookieid (number->string (random 4294967087)))
 	   (query-vector (get-rssuser db-conn username))
-	   (id-cookie (make-cookie "id" (string-append  (form-urlencoded-decode username) "-" cookieid) #:secure? #t)))
+	   (id-cookie (make-cookie "notgreader-id" (string-append  (form-urlencoded-decode username) "-" cookieid) 
+				   #:max-age 31536000 
+				   #:secure? #t)))
       (cond
        ((= 0 (vector-length query-vector))
 	(redirect-to "/")) ;;bad username
@@ -191,6 +193,19 @@
 	     (url ,url))))
      #:mime-type #"application/xml")))
 
+(define mark-read-week
+  (lambda (req)
+    (define bindings (request-bindings req))
+    (define feed-id (extract-binding/single 'feed_id bindings))
+
+    (for/list (((title description url date id star-id)
+		  (unread-items-older-than-week db-conn feed-id (number->string  *user-id*))))
+      (query-exec db-conn "insert into read_item(item_id,rssuser_id) values($1,$2)"
+		  id *user-id*))
+    (response/xexpr
+     `(feed_id ,feed-id)
+     #:mime-type #"application/xml")))
+
 (define mark-all-read
   (lambda (req)
     (define bindings (request-bindings req))
@@ -267,6 +282,8 @@
 	      `(p 
 		(a ((id "mark_all") (class "mark_all") (href "javascript:void(0);") (onclick ,(str "mark_all_read(" id "," *user-id* ")")))
 		   "Mark all as read")nbsp
+		(a ((id "mark_week") (class "mark_week") (href "javascript:void(0);") (onclick ,(str "mark_read_week(" id "," *user-id* ")")))
+		   "Items older than a week")nbsp
 		   (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
 		       (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
 		   (div ((style "display:none;border:solid 1px black")
@@ -292,9 +309,7 @@
 		(type "text") (size "24")))
 	(select ((name "feed_select") (id "feed_select"))
 		(option ((value "0")) "All")
-	,@(for/list (((title id)
-		      (in-query db-conn "select title,id from feed order by title")
-		      ))
+	,@(for/list (((title id) (get-rssuser-feed db-conn *user-id*)))
 	    `(option ((value ,(number->string id))) ,title)))
 	(button ((type "button") (id "search_button") (onclick "search();")))
 	(div ((id "results"))))))))
@@ -304,7 +319,7 @@
     (define cookies (request-cookies req))
     (define id-cookie
       (findf (lambda (c)
-               (string=? "id" (client-cookie-name c)))
+               (string=? "notgreader-id" (client-cookie-name c)))
              cookies))
     (if id-cookie
 	(begin
@@ -358,15 +373,18 @@
 			   (sql-timestamp-day date) "/"
 			   (sql-timestamp-year date) " " feed-title)))
 		     (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
-		     (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id)))) 
-			  ,(cdata 'cdata-start 'cdata-end desc))))))))))
+		     (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id))))
+			  ,(cond
+			    ((sql-null? desc) "")
+			    (else
+			     (cdata 'cdata-start 'cdatatend desc))))))))))))
 
 (define-page (home req)
 	(let* 
 	    ((cookies (request-cookies req))
 	     (id-cookie
 	       (findf (lambda (c)
-			(string=? "id" (client-cookie-name c)))
+			(string=? "notgreader-id" (client-cookie-name c)))
 		      cookies))
 	     (username (car (regexp-split #rx"-" (client-cookie-value id-cookie))))
 	     (cookieid (second (regexp-split #rx"-" (client-cookie-value id-cookie))))
@@ -405,6 +423,7 @@
    (("") login-page)
    (("mark-read") mark-read)
    (("mark-all-read") mark-all-read)
+   (("mark-read-week") mark-read-week)
    (("search") search)
    (("blog-list") blog-list)
    (("search-page") search-page)

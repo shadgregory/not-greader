@@ -35,6 +35,19 @@
        where item.feed_id=$1 and rssuser.id=$2 and read_item.item_id is null and item.read = false order by date"
 	      (string->number feed-id) (string->number user-id))))
 
+(define unread-items-older-than-week
+  (lambda (pgc feed-id user-id)
+    (in-query pgc
+	      "select item.title, item.description, item.url, item.date, item.id, star_item.item_id from item 
+       inner join feed on item.feed_id = feed.id 
+       inner join rssuser_feed on rssuser_feed.feed_id = feed.id 
+       inner join rssuser on rssuser.id = rssuser_feed.rssuser_id
+       left outer join read_item on read_item.item_id = item.id and read_item.rssuser_id = rssuser.id
+       left outer join star_item on star_item.item_id = item.id and star_item.rssuser_id = rssuser.id
+       where item.feed_id=$1 and rssuser.id=$2 and read_item.item_id is null and item.read = false and 
+	   item.date < (now() - interval '7 days') order by date"
+	      (string->number feed-id) (string->number user-id))))
+
 (define fetch-star-items
   (lambda (pgc user-id)
     (in-query pgc "select item.title, item.description, item.url, item.date, item.id from item 
@@ -72,11 +85,18 @@
        inner join rssuser on rssuser.id = rssuser_feed.rssuser_id
        left outer join read_item on read_item.item_id = item.id and read_item.rssuser_id = rssuser.id
        left outer join star_item on star_item.item_id = item.id and star_item.rssuser_id = rssuser.id
-       where item.date > (now () - interval '22 hour') and rssuser.id = $1 and read_item.item_id is null and item.read = false order by item.date desc" 
+       where item.date > (now () - interval '24 hour') and rssuser.id = $1 and read_item.item_id is null and item.read = false order by item.date desc" 
 	      user-id)))
 
 (define get-rssuser
   (lambda (pgc username) 
     (query-row pgc "select password,username,cookieid,id from rssuser where username=$1" username)))
+
+(define get-rssuser-feed
+  (lambda (pgc user-id)
+    (in-query pgc
+	      "select title, id from feed right outer join rssuser_feed on feed.id = rssuser_feed.feed_id 
+       where rssuser_feed.rssuser_id = $1 order by title" 
+	      user-id)))
 
 (provide (all-defined-out))
