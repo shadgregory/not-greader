@@ -280,7 +280,7 @@
 	    (let ((unread-count 
 		   (get-unread-count db-conn (number->string id) *user-id*)))
 	      `(p
-                (select ((id "blog_list_select")
+                (select ((id ,(str "blog_list_select_" id))
                          (class "mark_select")
                          (onchange ,(str "list_select(" id "," *user-id* ")")))
                         (option ((value "0")) "--Mark--")
@@ -409,9 +409,9 @@
 			   (div ((style "border:solid 1px black;text-align:right;padding:5px;"))
 			        (a ((href "logout")) ,(str "Logout " username)))
 			  (ul
+			   (li (a ((href "blog-list")) "Blog List"))
 			   (li (a ((href ,(str "recent-items?username=" username))) "Latest Items"))
 			   (li (a ((href "search-page")) "Search"))
-			   (li (a ((href "blog-list")) "Blog List"))
 			   (li (a ((href "star-page")) "Starred"))
 			   ))))))
 	   (else (redirect-to "/")))))

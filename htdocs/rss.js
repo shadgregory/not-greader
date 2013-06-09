@@ -103,10 +103,10 @@ function mark_all_read(feed_id, user_id) {
 }
 
 function list_select(feed_id, user_id) {
-    var selected = $("#blog_list_select").val();
-    if (selected == 1) {
+    var selected = $("#blog_list_select_" + feed_id).val();
+    if (selected == "1") {
         mark_all_read(feed_id, user_id);
-    } else if (selected == 2) {
+    } else if (selected == "2") {
         mark_read_week(feed_id, user_id);
     }
 }
