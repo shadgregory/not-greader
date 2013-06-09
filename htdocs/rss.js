@@ -109,6 +109,7 @@ function list_select(feed_id, user_id) {
     } else if (selected == "2") {
         mark_read_week(feed_id, user_id);
     }
+    $("#blog_list_select_" + feed_id).val("0");
 }
 
 function mark_read_week(feed_id, user_id) {
