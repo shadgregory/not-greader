@@ -279,15 +279,18 @@
 		      (get-feed-list db-conn *user-id*)))
 	    (let ((unread-count 
 		   (get-unread-count db-conn (number->string id) *user-id*)))
-	      `(p 
-		(a ((id "mark_all") (class "mark_all") (href "javascript:void(0);") (onclick ,(str "mark_all_read(" id "," *user-id* ")")))
-		   "Mark all as read")nbsp
-		(a ((id "mark_week") (class "mark_week") (href "javascript:void(0);") (onclick ,(str "mark_read_week(" id "," *user-id* ")")))
-		   "Items older than a week")nbsp
-		   (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
-		       (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
-		   (div ((style "display:none;border:solid 1px black")
-			 (id ,(str "results_" id))))))))))))
+	      `(p
+                (select ((id "blog_list_select")
+                         (class "mark_select")
+                         (onchange ,(str "list_select(" id "," *user-id* ")")))
+                        (option ((value "0")) "--Mark--")
+                        (option ((value "1")) "Mark all as read")
+                        (option ((value "2")) "Items older than a week")
+                 )nbsp
+                (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
+                    (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
+                (div ((style "display:none;border:solid 1px black")
+                      (id ,(str "results_" id))))))))))))
 
 (define get-feed-title
   (lambda (req)

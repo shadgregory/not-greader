@@ -4,5 +4,9 @@ a.item_title:hover {text-decoration:underline;}
 a.item_title:active {text-decoration:underline;}
 .item_title {font-weight:bold;}
 .centered {width:80%;margin-left:auto;margin-right:auto;}
-.mark_all {font-size: .65em !important;}
-.mark_week {font-size: .65em !important;}
+.mark_select {color:#0073ea;
+              background-color:#f6f6f6;
+              font-family: Helvetica,Arial,sans-serif;
+              font-weight:bold;
+              border:1px solid #a4a4a4;
+              font-size: .65em !important;}
