@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 use strict;
-use LWP::Simple;
+use LWP::Simple qw($ua get);
 use DBI;
 use XML::RSS;
 use XML::Feed;
@@ -19,6 +19,7 @@ while (my @feeds = $feed_handle->fetchrow_array()) {
     my $feed_id = $feeds[0];
     my $feed_url = $feeds[1];
     print $feeds[2] . "\n";
+    $ua->agent('My agent/1.0');
     my $xml = get($feed_url);
     my $rss = new XML::RSS;
     $rss->parse($xml);
