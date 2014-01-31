@@ -108,7 +108,7 @@
 	 (head 
 	  (link ((rel "stylesheet") (href "jquery-ui.css")) " ")
 	  (link ((rel "stylesheet") (href "rss.css")) " ")
-	  (script ((src "jquery-1.9.1.min.js")) " ")
+	  (script ((src "jquery-1.10.2.min.js")) " ")
 	  (script ((src "jquery-ui.min.js"))" ")
 	  (script "$(function() {$('input[type=submit]').button();});"))
 	 (body
@@ -400,7 +400,7 @@
 		(title "Shad's Reader")
 		(link ((rel "stylesheet") (href "jquery-ui.css")) " ")
 		(link ((rel "stylesheet") (href "rss.css")) " ")
-		(script ((src "jquery-1.9.1.min.js"))" ")
+		(script ((src "jquery-1.10.2.min.js"))" ")
 		(script ((src "jquery-ui.min.js"))" ")
 		(script ((type "text/javascript")(src "rss.js")) " ")
 		(script "$(function() {$( '#tabs' ).tabs();});main_init();"))
@@ -409,8 +409,8 @@
 			   (div ((style "border:solid 1px black;text-align:right;padding:5px;"))
 			        (a ((href "logout")) ,(str "Logout " username)))
 			  (ul
-			   (li (a ((href "blog-list")) "Blog List"))
 			   (li (a ((href ,(str "recent-items?username=" username))) "Latest Items"))
+			   (li (a ((href "blog-list")) "Blog List"))
 			   (li (a ((href "search-page")) "Search"))
 			   (li (a ((href "star-page")) "Starred"))
 			   ))))))
