@@ -7,6 +7,6 @@ Not-GReader requires Racket (http://racket-lang.org) and Postgreql (http://postg
 
 You can see an example of this code at
 
-https://tranquiltrak.com:8000
+https://wsgregory.us:8000
 
 Log in is guest / guest
