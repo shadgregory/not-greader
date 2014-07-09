@@ -285,12 +285,12 @@
                          (onchange ,(str "list_select(" id "," *user-id* ")")))
                         (option ((value "0")) "--Mark--")
                         (option ((value "1")) "Mark all as read")
-                        (option ((value "2")) "Items older than a week")
-                 )nbsp
-                (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
-                    (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
-                (div ((style "display:none;border:solid 1px black")
-                      (id ,(str "results_" id))))))))))))
+                        (option ((value "2")) "Items older than a week"))nbsp
+			(a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
+			    (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
+			(div ((style "display:none;border:solid 1px black")(id ,(str "results_" id "_container")))
+			     (div ((style "padding:4px;")) (a ((href ,url)) ,url))
+			     (div ((id ,(str "results_" id)))))))))))))
 
 (define get-feed-title
   (lambda (req)
@@ -383,38 +383,38 @@
 			     (cdata 'cdata-start 'cdatatend desc))))))))))))
 
 (define-page (home req)
-	(let* 
-	    ((cookies (request-cookies req))
-	     (id-cookie
-	       (findf (lambda (c)
-			(string=? "notgreader-id" (client-cookie-name c)))
-		      cookies))
-	     (username (car (regexp-split #rx"-" (client-cookie-value id-cookie))))
-	     (cookieid (second (regexp-split #rx"-" (client-cookie-value id-cookie))))
-	     (query-vector (get-rssuser db-conn username)))
-	  (cond
-	   ((equal? cookieid (vector-ref query-vector 2))
-	    (response/xexpr
-	     `(html
-	       (head
-		(title "Shad's Reader")
-		(link ((rel "stylesheet") (href "jquery-ui.css")) " ")
-		(link ((rel "stylesheet") (href "rss.css")) " ")
-		(script ((src "jquery-1.10.2.min.js"))" ")
-		(script ((src "jquery-ui.min.js"))" ")
-		(script ((type "text/javascript")(src "rss.js")) " ")
-		(script "$(function() {$( '#tabs' ).tabs();});main_init();"))
-	       (body ((style "background-color;#e5e5e5;"))
-		     (div ((id "tabs") (class "centered"))
-			   (div ((style "border:solid 1px black;text-align:right;padding:5px;"))
-			        (a ((href "logout")) ,(str "Logout " username)))
-			  (ul
-			   (li (a ((href ,(str "recent-items?username=" username))) "Latest Items"))
-			   (li (a ((href "blog-list")) "Blog List"))
-			   (li (a ((href "search-page")) "Search"))
-			   (li (a ((href "star-page")) "Starred"))
-			   ))))))
-	   (else (redirect-to "/")))))
+  (let* 
+      ((cookies (request-cookies req))
+       (id-cookie
+	(findf (lambda (c)
+		 (string=? "notgreader-id" (client-cookie-name c)))
+	       cookies))
+       (username (car (regexp-split #rx"-" (client-cookie-value id-cookie))))
+       (cookieid (second (regexp-split #rx"-" (client-cookie-value id-cookie))))
+       (query-vector (get-rssuser db-conn username)))
+    (cond
+     ((equal? cookieid (vector-ref query-vector 2))
+      (response/xexpr
+       `(html
+	 (head
+	  (title "Shad's Reader")
+	  (link ((rel "stylesheet") (href "jquery-ui.css")) " ")
+	  (link ((rel "stylesheet") (href "rss.css")) " ")
+	  (script ((src "jquery-1.10.2.min.js"))" ")
+	  (script ((src "jquery-ui.min.js"))" ")
+	  (script ((type "text/javascript")(src "rss.js")) " ")
+	  (script "$(function() {$( '#tabs' ).tabs();});main_init();"))
+	 (body ((style "background-color;#e5e5e5;"))
+	       (div ((id "tabs") (class "centered"))
+		    (div ((style "border:solid 1px black;text-align:right;padding:5px;"))
+			 (a ((href "logout")) ,(str "Logout " username))
+			 (div ((id "cookie_status") (style "font-size:x-small;"))))
+		    (ul
+		     (li (a ((href ,(str "recent-items?username=" username))) "Latest Items"))
+		     (li (a ((href "blog-list")) "Blog List"))
+		     (li (a ((href "search-page")) "Search"))
+		     (li (a ((href "star-page")) "Starred"))))))))
+     (else (redirect-to "/")))))
 
 (define (start request)
   (rss-dispatch request))

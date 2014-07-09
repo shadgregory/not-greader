@@ -3,6 +3,7 @@ function main_init () {
 	$( "input[type=submit], button" ).button();
 	$( ".mark_all" ).button();
 	$( ".mark_week" ).button();
+	setInterval(check_cookie,60000);
 	$('#subscribe_dialog').dialog({
 	    autoOpen: false
 	    ,modal: true
@@ -32,6 +33,30 @@ function add_feed(username, title, link) {
 					   + title + "</b></p>");
 	}
     });
+}
+
+//http://www.quirksmode.org/js/cookies.html
+function readCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0;i < ca.length;i++) {
+	var c = ca[i];
+	while (c.charAt(0)==' ') c = c.substring(1,c.length);
+	if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+}
+
+function check_cookie () {
+    var cookie = readCookie("notgreader-id");
+    console.log("cookie : " + cookie);
+    if (!cookie)
+	document.getElementById("cookie_status").innerHTML="<i>You have been logged out.</i>";
+    else
+	document.getElementById("cookie_status").innerHTML="<i>You are logged in.</i>";
+    console.log($("#cookie_status").innerHTML);
+    console.log(document.getElementById("cookie_status").innerHTML);
+    return;
 }
 
 function check_url(username, url) {
@@ -201,8 +226,8 @@ function mark_star(id) {
 }
 
 function retrieve_unread(feed_id) {
-    if (document.getElementById("results_"+feed_id).style.display == 'none') {
-	document.getElementById("results_"+feed_id).style.display = 'block';
+    if (document.getElementById("results_"+feed_id+"_container").style.display == 'none') {
+	document.getElementById("results_"+feed_id+"_container").style.display = 'block';
 	$.ajax({
 	    url     : 'retrieve-unread'
 	    ,data   : {feed_id:feed_id}
@@ -228,6 +253,6 @@ function retrieve_unread(feed_id) {
 	    }
 	});
     } else {
-	document.getElementById("results_"+feed_id).style.display = 'none';
+	document.getElementById("results_"+feed_id + "_container").style.display = 'none';
     }
 }
