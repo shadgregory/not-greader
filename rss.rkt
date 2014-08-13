@@ -193,6 +193,17 @@
 	     (url ,url))))
      #:mime-type #"application/xml")))
 
+(define remove-feed
+  (lambda (req)
+    (define bindings (request-bindings req))
+    (define feed-id (extract-binding/single 'feed_id bindings))
+    (query-exec db-conn "delete from rssuser_feed where feed_id=$1 AND rssuser_id=$2" (string->number feed-id)
+		*user-id*)
+    (response/xexpr
+     `(deleted
+       (feed_id ,feed-id))
+     #:mime-type #"application/xml")))
+
 (define mark-read-week
   (lambda (req)
     (define bindings (request-bindings req))
@@ -279,13 +290,14 @@
 		      (get-feed-list db-conn *user-id*)))
 	    (let ((unread-count 
 		   (get-unread-count db-conn (number->string id) *user-id*)))
-	      `(p
+	      `(p ((id ,(str "blog_list_p_" id)))
                 (select ((id ,(str "blog_list_select_" id))
                          (class "mark_select")
                          (onchange ,(str "list_select(" id "," *user-id* ")")))
                         (option ((value "0")) "--Mark--")
                         (option ((value "1")) "Mark all as read")
-                        (option ((value "2")) "Items older than a week"))nbsp
+                        (option ((value "2")) "Items older than a week")
+			(option ((value "3")) "Remove"))nbsp
 			(a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
 			    (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
 			(div ((style "display:none;border:solid 1px black")(id ,(str "results_" id "_container")))
@@ -427,6 +439,7 @@
    (("mark-read") mark-read)
    (("mark-all-read") mark-all-read)
    (("mark-read-week") mark-read-week)
+   (("remove-feed") remove-feed)
    (("search") search)
    (("blog-list") blog-list)
    (("search-page") search-page)

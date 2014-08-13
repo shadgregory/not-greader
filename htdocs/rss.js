@@ -133,8 +133,21 @@ function list_select(feed_id, user_id) {
         mark_all_read(feed_id, user_id);
     } else if (selected == "2") {
         mark_read_week(feed_id, user_id);
+    } else if (selected == "3") {
+	remove_feed(feed_id);
     }
     $("#blog_list_select_" + feed_id).val("0");
+}
+
+function remove_feed(feed_id) {
+    $.ajax({
+	url:'remove-feed'
+	,context: document.body
+	,data:{feed_id:feed_id}
+	,success:function() {
+	    $("#blog_list_p_" + feed_id).hide();
+	}
+    });
 }
 
 function mark_read_week(feed_id, user_id) {
