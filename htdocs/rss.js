@@ -145,7 +145,8 @@ function remove_feed(feed_id) {
 	,context: document.body
 	,data:{feed_id:feed_id}
 	,success:function() {
-	    $("#blog_list_p_" + feed_id).hide();
+	    $("#blog_list_p_" + feed_id).fadeOut(1000);
+	    $("#results_" + feed_id + "_container").fadeOut(1000);
 	}
     });
 }
