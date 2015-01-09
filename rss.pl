@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 use strict;
+use 5.014;
 use LWP::Simple qw($ua get);
 use DBI;
 use XML::RSS;
@@ -18,11 +19,13 @@ $feed_handle->execute();
 while (my @feeds = $feed_handle->fetchrow_array()) {
     my $feed_id = $feeds[0];
     my $feed_url = $feeds[1];
-    print $feeds[2] . "\n";
     $ua->agent('My agent/1.0');
     my $xml = get($feed_url);
     my $rss = new XML::RSS;
-    $rss->parse($xml);
+    eval {
+    	$rss->parse($xml);
+    };
+    next if $@;
     if (@{$rss->{items}} > 0) {
 	for my $i (@{$rss->{items}}) {
 	    my $pub_date = $i->{'pubDate'};
