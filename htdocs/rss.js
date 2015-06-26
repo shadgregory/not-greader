@@ -3,7 +3,6 @@ function main_init () {
 	$( "input[type=submit], button" ).button();
 	$( ".mark_all" ).button();
 	$( ".mark_week" ).button();
-	setInterval(check_cookie,60000);
 	$('#subscribe_dialog').dialog({
 	    autoOpen: false
 	    ,modal: true
@@ -47,18 +46,6 @@ function readCookie(name) {
     return null;
 }
 
-function check_cookie () {
-    var cookie = readCookie("notgreader-id");
-    console.log("cookie : " + cookie);
-    if (!cookie)
-	document.getElementById("cookie_status").innerHTML="<i>You have been logged out.</i>";
-    else
-	document.getElementById("cookie_status").innerHTML="<i>You are logged in.</i>";
-    console.log($("#cookie_status").innerHTML);
-    console.log(document.getElementById("cookie_status").innerHTML);
-    return;
-}
-
 function check_url(username, url) {
     $('#subscribe_results').html('');
     $('#subscribe_dialog').css('cursor', 'wait');
@@ -93,38 +80,59 @@ function check_url(username, url) {
 }
 
 function flip(desc_id) {
+    var id = desc_id.replace("desc-","");
     if (document.getElementById(desc_id).style.display == 'none') {
 	document.getElementById(desc_id).style.display = 'block';
-	var id = desc_id.replace("desc-","");
 	$.ajax({
-	    url: 'mark-read'
-	    ,data: {item_id : id}
+	    url: 'check-auth'
 	    ,context: document.body
+	    ,success: function(xml) {
+		var status = $(xml).find('authenticated').text();
+		if (status == "false") {
+		    window.location = "https://shadgregory.net:8000";
+		} else {
+		    $.ajax({
+			url: 'mark-read'
+			,data: {item_id : id}
+			,context: document.body
+		    });
+		}
+	    }
 	});
-
     } else {
 	document.getElementById(desc_id).style.display = 'none';
+	$("#para_" + id).fadeOut(1600);
+	$.ajax({
+	    url: 'check-auth'
+	    ,context: document.body
+	    ,success: function(xml) {
+		var status = $(xml).find('authenticated').text();
+		if (status == "false") {
+		    window.location = "https://shadgregory.net:8000";
+		}
+	    }
+	});
     }
 }
 
 function mark_all_read(feed_id, user_id) {
     $.ajax({
-	       url:'mark-all-read'
-	       ,context: document.body
-	       ,data:{feed_id:feed_id,user_id:user_id}
-	       ,success:function() {
-		   $.ajax({
-			      url : 'get-feed-title'
-			      ,data: {feed_id : feed_id}
-			      ,content: document.body
-			      ,success: function(xml) {
-				  var title = $(xml).find('title').text();
-				  $('#blog_title_'+feed_id).text(title);
-				  document.getElementById("results_"+feed_id).style.display = 'none';
-			      }
-			  });
-	       }
-	   });
+	url:'mark-all-read'
+	,context: document.body
+	,data:{feed_id:feed_id,user_id:user_id}
+	,success:function() {
+	    $.ajax({
+		url : 'get-feed-title'
+		,data: {feed_id : feed_id}
+		,content: document.body
+		,success: function(xml) {
+		    var title = $(xml).find('title').text();
+		    $('#blog_title_'+feed_id).text(title);
+		    document.getElementById("results_"+feed_id).style.display = 'none';
+		}
+	    });
+	}
+    });
 }
 
 function list_select(feed_id, user_id) {
@@ -153,23 +161,24 @@ function remove_feed(feed_id) {
 
 function mark_read_week(feed_id, user_id) {
     $.ajax({
-	       url:'mark-read-week'
-	       ,context: document.body
-	       ,data:{feed_id:feed_id,user_id:user_id}
-	       ,success:function() {
-		   $.ajax({
-			      url : 'get-feed-title'
-			      ,data: {feed_id : feed_id}
-			      ,content: document.body
-			      ,success: function(xml) {
-				  var title = $(xml).find('title').text();
-				  $('#blog_title_'+feed_id).text(title);
-				  document.getElementById("results_"+feed_id).style.display = 'none';
-			      }
-			  });
-	       }
-	   });
+	url:'mark-read-week'
+	,context: document.body
+	,data:{feed_id:feed_id,user_id:user_id}
+	,success:function() {
+	    $.ajax({
+		url : 'get-feed-title'
+		,data: {feed_id : feed_id}
+		,content: document.body
+		,success: function(xml) {
+		    var title = $(xml).find('title').text();
+		    $('#blog_title_'+feed_id).text(title);
+		    document.getElementById("results_"+feed_id).style.display = 'none';
+		}
+	    });
+	}
+    });
 }
+
 function search() {
     var q = $('#rss_search').val();
     var feed_id = $('#feed_select option:selected').val();

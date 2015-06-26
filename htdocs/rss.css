@@ -10,3 +10,5 @@ a.item_title:active {text-decoration:underline;}
               font-weight:bold;
               border:1px solid #a4a4a4;
               font-size: .65em !important;}
+img { border: 0 none; display: block; }
+img, a, div { image-rendering: optimizequality; }

@@ -58,6 +58,18 @@
 		      (list (make-header #"Refresh" #"5; /")) 
 		      (list #"<html><body><p>You will be redirected to the login page. If you are not forwarded, click <a href='/'>here</a>.</p></body></html>")))))))
 
+(define check-auth
+  (lambda (req)
+    (cond
+     ((eq? (check-cookie req) #t)
+      (response/xexpr
+       `(authenticated "true")
+       #:mime-type #"application/xml"))
+     (else
+      (response/xexpr
+       `(authenticated "false")
+       #:mime-type #"application/xml")))))
+
 (define user-formlet
   (formlet
    (table
@@ -260,7 +272,7 @@
 		     (fetch-unread-items db-conn feed-id (number->string  *user-id*))))
 	   `(result
 	     (title ,title)
-	     (description ,description)
+             (description ,(if (sql-null? description) "" description))
 	     (url ,url)
 	     (star ,(if (sql-null? star-id) "F" "T"))
 	     (date ,(str
@@ -269,8 +281,7 @@
 		     (sql-timestamp-year date)))
 	     (id ,(number->string id))))))))
 
-(define star-page
-  (lambda (req)
+(define-page (star-page req)
     (response/xexpr
      `(html
        (body
@@ -278,31 +289,30 @@
 		      (fetch-star-items db-conn (number->string  *user-id*))))
 	    `(p  (span ((onclick ,(str "mark_star(" id ")")) (id ,(str "star_" id)) (class "ui-state-highlight ui-corner-all"))
 		       (span ((class "ui-icon ui-icon-star") (style "display:inline-block"))))
-		 (a ((href "javascript:void(0);") (onclick ,(str "window.open('" url "');"))) ,title))))))))
+		 (a ((href "javascript:void(0);") (onclick ,(str "window.open('" url "');"))) ,title)))))))
 
-(define blog-list
-  (lambda (req)
-    (response/xexpr
-     `(html
-       (head (script "main_init();"))
-       (body
-	,@(for/list (((title url id)
-		      (get-feed-list db-conn *user-id*)))
-	    (let ((unread-count 
-		   (get-unread-count db-conn (number->string id) *user-id*)))
-	      `(p ((id ,(str "blog_list_p_" id)))
-                (select ((id ,(str "blog_list_select_" id))
-                         (class "mark_select")
-                         (onchange ,(str "list_select(" id "," *user-id* ")")))
-                        (option ((value "0")) "--Mark--")
-                        (option ((value "1")) "Mark all as read")
-                        (option ((value "2")) "Items older than a week")
-			(option ((value "3")) "Remove"))nbsp
-			(a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
-			    (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
-			(div ((style "display:none;border:solid 1px black")(id ,(str "results_" id "_container")))
-			     (div ((style "padding:4px;")) (a ((href ,url)) ,url))
-			     (div ((id ,(str "results_" id)))))))))))))
+(define-page (blog-list req)
+  (response/xexpr
+   `(html
+     (head (script "main_init();"))
+     (body
+      ,@(for/list (((title url id)
+                    (get-feed-list db-conn *user-id*)))
+          (let ((unread-count 
+                 (get-unread-count db-conn (number->string id) *user-id*)))
+            `(p ((id ,(str "blog_list_p_" id)))
+              (select ((id ,(str "blog_list_select_" id))
+                       (class "mark_select")
+                       (onchange ,(str "list_select(" id "," *user-id* ")")))
+                      (option ((value "0")) "--Mark--")
+                      (option ((value "1")) "Mark all as read")
+                      (option ((value "2")) "Items older than a week")
+                      (option ((value "3")) "Remove"))nbsp
+              (a ((id ,(str "blog_title_" id)) (onclick ,(str "retrieve_unread(" id ")"))
+                  (href "javascript:void(0)")) ,(str title " (" unread-count ")"))
+              (div ((style "display:none;border:solid 1px black")(id ,(str "results_" id "_container")))
+                   (div ((style "padding:4px;")) (a ((href ,url)) ,url))
+                   (div ((id ,(str "results_" id))))))))))))
 
 (define get-feed-title
   (lambda (req)
@@ -370,29 +380,34 @@
 		    (td 
 		     (button ((type "button") (id "subscribe_button") (onclick ,(str "check_url('"username"',$('#feed_link').val());"))) "Subscribe"))))
 		  (div ((id "subscribe_results"))))
-	     ,@(for/list (((feed-title title link date desc item-id star-id) 
+	     ,@(for/list (
+                          ((feed-title title link date desc item-id star-id)
 			   (get-item db-conn *user-id*)))
-		 `(p (div
-		      (span ((onclick ,(str "mark_star(" item-id ")")) 
-			     (id ,(str "star_" item-id)) 
-			     (class 
-			       ,(cond ((sql-null? star-id) 
-				       "ui-state-default")
-				      (else "ui-state-highlight"))))
-		       (span ((class "ui-icon ui-icon-star") (style "display:inline-block"))))
-		      (a ((href "javascript:void(0)") (class "item_title") 
-			  (id ,(string-append "toggle-" (number->string item-id))) 
-			  (onclick ,(str "flip('desc-" item-id "');"))) 
-			 ,(str
-			   (sql-timestamp-month date) "/"
-			   (sql-timestamp-day date) "/"
-			   (sql-timestamp-year date) " " feed-title)))
-		     (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
-		     (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id))))
-			  ,(cond
-			    ((sql-null? desc) "")
-			    (else
-			     (cdata 'cdata-start 'cdatatend desc))))))))))))
+		 `(p (div ((id ,(str "para_" item-id)))
+			  (div
+			   (span ((onclick ,(str "mark_star(" item-id ")")) 
+				  (id ,(str "star_" item-id)) 
+				  (class 
+				    ,(cond ((sql-null? star-id) 
+					    "ui-state-default")
+					   (else "ui-state-highlight"))))
+				 (span ((class "ui-icon ui-icon-star") (style "display:inline-block"))))
+			   (a ((href "javascript:void(0)") (class "item_title") 
+			       (id ,(str "'title_link_" item-id "'"))
+			       (onclick ,(str "flip('desc-" item-id "');")))
+			      ,(str
+				(sql-timestamp-month date) "/"
+				(sql-timestamp-day date) "/"
+				(sql-timestamp-year date) " " feed-title)))
+			  (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
+			  (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id))))
+			       ,(cond
+				 ((sql-null? desc) "")
+				 (else
+				  (cdata 'cdata-start 'cdatatend desc)))
+                               (a ((href "javascript:void(0)") (class "item_title") 
+                                   (id ,(str "'title_link_" item-id "'"))
+                                   (onclick ,(str "flip('desc-" item-id "');"))) "Close")))))))))))
 
 (define-page (home req)
   (let* 
@@ -449,6 +464,7 @@
    (("logout") logout)
    (("validate-user") validate-user)
    (("star-item") star-item)
+   (("check-auth") check-auth)
    (("star-page") star-page)
    (("unstar-item") unstar-item)
    (("retrieve-unread") retrieve-unread)))
@@ -460,8 +476,8 @@
 	       #:ssl? #t
 	       #:port 8000
 	       #:servlet-regexp #rx""
-	       #:ssl-cert "server-cert.pem"
-	       #:ssl-key "private-key.pem"
+	       #:ssl-cert "rss-server-cert.pem"
+	       #:ssl-key "rss-private-key.pem"
 	       #:log-file "rss.log"
 	       #:extra-files-paths (list 
 				    (build-path "./htdocs"))
