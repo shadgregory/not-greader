@@ -172,7 +172,8 @@ function mark_read_week(feed_id, user_id) {
 		,success: function(xml) {
 		    var title = $(xml).find('title').text();
 		    $('#blog_title_'+feed_id).text(title);
-		    document.getElementById("results_"+feed_id).style.display = 'none';
+		    $("#results_"+feed_id).html("");
+		    retrieve_unread(feed_id);
 		}
 	    });
 	}
