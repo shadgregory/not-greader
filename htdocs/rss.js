@@ -249,6 +249,26 @@ function mark_star(id) {
     }
 }
 
+function mark_love(id) {
+    if ($('#love_' + id).is('.ui-state-default')) {
+	$('#love_'+id).attr('class', 'ui-state-highlight ui-corner-all');
+	$('#unlove_'+id).attr('class', 'ui-state-default ui-corner-all');
+	$.ajax({url:'love-item', data : {item_id:id}});
+    } else {
+	$('#love_'+id).attr('class', 'ui-state-default ui-corner-all');
+	$.ajax({url:'unlove-item', data : {item_id:id}});
+    }
+}
+function mark_unlove(id) {
+    if ($('#unlove_' + id).is('.ui-state-default')) {
+	$('#unlove_'+id).attr('class', 'ui-state-highlight ui-corner-all');
+	$('#love_'+id).attr('class', 'ui-state-default ui-corner-all');
+	$.ajax({url:'unlove-item', data : {item_id:id}});
+    } else {
+	$('#unlove_'+id).attr('class', 'ui-state-default ui-corner-all');
+	$.ajax({url:'love-item', data : {item_id:id}});
+    }
+}
 function retrieve_unread(feed_id) {
     if (document.getElementById("results_"+feed_id+"_container").style.display == 'none') {
 	document.getElementById("results_"+feed_id+"_container").style.display = 'block';

@@ -12,6 +12,7 @@
  net/cookie
  web-server/http/cookie
  web-server/http/cookie-parse
+ "bayes.rkt"
  "db-lib.rkt")
 
 (provide/contract (start (request? . -> . response?)))
@@ -120,7 +121,7 @@
 	 (head 
 	  (link ((rel "stylesheet") (href "jquery-ui.css")) " ")
 	  (link ((rel "stylesheet") (href "rss.css")) " ")
-	  (script ((src "jquery-1.10.2.min.js")) " ")
+	  (script ((src "jquery-1.12.0.min.js")) " ")
 	  (script ((src "jquery-ui.min.js"))" ")
 	  (script "$(function() {$('input[type=submit]').button();});"))
 	 (body
@@ -242,6 +243,26 @@
      `(feed_id ,feed-id)
      #:mime-type #"application/xml")))
 
+(define love-item
+  (lambda (req)
+    (define bindings (request-bindings req))
+    (define item-id (extract-binding/single 'item_id bindings))
+    (query-exec db-conn "update item set love ='t' where id = $1" (string->number item-id))
+    (response/xexpr
+     `(love
+       (item_id ,item-id))
+     #:mime-type #"application/xml")))
+
+(define unlove-item
+  (lambda (req)
+    (define bindings (request-bindings req))
+    (define item-id (extract-binding/single 'item_id bindings))
+    (query-exec db-conn "update item set love ='f' where id = $1" (string->number item-id))
+    (response/xexpr
+     `(unlove
+       (item_id ,item-id))
+     #:mime-type #"application/xml")))
+
 (define star-item
   (lambda (req)
     (define bindings (request-bindings req))
@@ -289,8 +310,11 @@
 		      (fetch-star-items db-conn (number->string  *user-id*))))
 	    `(p  (span ((onclick ,(str "mark_star(" id ")")) (id ,(str "star_" id)) (class "ui-state-highlight ui-corner-all"))
 		       (span ((class "ui-icon ui-icon-star") (style "display:inline-block"))))
-		 (a ((href "javascript:void(0);") (onclick ,(str "window.open('" url "');"))) ,title)))))))
+		 (a ((href "javascript:void(0);") (onclick ,(str "window.open('" url "');")))
+                    ,(if (sql-null? title) "" title)
+                    )))))))
 
+;;Lists out the user's subscriptions
 (define-page (blog-list req)
   (response/xexpr
    `(html
@@ -298,7 +322,7 @@
      (body
       ,@(for/list (((title url id)
                     (get-feed-list db-conn *user-id*)))
-          (let ((unread-count 
+          (let ((unread-count
                  (get-unread-count db-conn (number->string id) *user-id*)))
             `(p ((id ,(str "blog_list_p_" id)))
               (select ((id ,(str "blog_list_select_" id))
@@ -360,6 +384,7 @@
 	     (else #f))))
 	#f)))
 
+;; create of page of links for recent items
 (define recent-items
   (lambda (req)
     (define bindings (request-bindings req))
@@ -381,8 +406,9 @@
 		     (button ((type "button") (id "subscribe_button") (onclick ,(str "check_url('"username"',$('#feed_link').val());"))) "Subscribe"))))
 		  (div ((id "subscribe_results"))))
 	     ,@(for/list (
-                          ((feed-title title link date desc item-id star-id)
-			   (get-item db-conn *user-id*)))
+                          ((feed-title title link date desc item-id item-love star-id)
+			   (get-item db-conn *user-id*))
+                          #:when (< (check-love item-id) 0.9))
 		 `(p (div ((id ,(str "para_" item-id)))
 			  (div
 			   (span ((onclick ,(str "mark_star(" item-id ")")) 
@@ -398,16 +424,37 @@
 			      ,(str
 				(sql-timestamp-month date) "/"
 				(sql-timestamp-day date) "/"
-				(sql-timestamp-year date) " " feed-title)))
+				(sql-timestamp-year date) " " feed-title))
+                           ;(div ,(str (check-love item-id)))
+                           )
 			  (a ((href "javascript:void(0)") (onclick  ,(str "window.open('"  link "')"))) ,title)
-			  (div ((style "display:none")(id ,(string-append "desc-" (number->string item-id))))
+			  (div ((style "display:none;")(id ,(string-append "desc-" (number->string item-id))))
 			       ,(cond
 				 ((sql-null? desc) "")
 				 (else
 				  (cdata 'cdata-start 'cdatatend desc)))
-                               (a ((href "javascript:void(0)") (class "item_title") 
-                                   (id ,(str "'title_link_" item-id "'"))
-                                   (onclick ,(str "flip('desc-" item-id "');"))) "Close")))))))))))
+                               (p
+                                (div ((style "padding:4px;"))
+                                     (span ((onclick ,(str "mark_love(" item-id ")")) 
+                                            (id ,(str "love_" item-id)) 
+                                            (class 
+                                              ,(cond ((equal? item-love #t) 
+                                                      "ui-state-highlight")
+                                                     (else "ui-state-default"))))
+                                           (span ((class "ui-icon ui-icon-heart") (style "display:inline-block"))))
+                                     (span ((style "padding-left:4px;") (onclick ,(str "mark_unlove(" item-id ")"))
+                                            (id ,(str "unlove_" item-id)) 
+                                            (class 
+                                              ,(cond 
+                                                 ((equal? item-love #f)
+                                                  "ui-state-highlight")
+                                                 (else "ui-state-default"))))
+                                           (span ((class "ui-icon ui-icon-circle-close") (style "display:inline-block"))))
+                                     )
+                                (a ((href "javascript:void(0)") (class "item_title") 
+                                    (id ,(str "'title_link_" item-id "'"))
+                                    (onclick ,(str "flip('desc-" item-id "');"))) "Close"))
+                               ))))))))))
 
 (define-page (home req)
   (let* 
@@ -427,7 +474,7 @@
 	  (title "Shad's Reader")
 	  (link ((rel "stylesheet") (href "jquery-ui.css")) " ")
 	  (link ((rel "stylesheet") (href "rss.css")) " ")
-	  (script ((src "jquery-1.10.2.min.js"))" ")
+	  (script ((src "jquery-1.12.0.min.js"))" ")
 	  (script ((src "jquery-ui.min.js"))" ")
 	  (script ((type "text/javascript")(src "rss.js")) " ")
 	  (script "$(function() {$( '#tabs' ).tabs();});main_init();"))
@@ -464,9 +511,11 @@
    (("logout") logout)
    (("validate-user") validate-user)
    (("star-item") star-item)
+   (("love-item") love-item)
    (("check-auth") check-auth)
    (("star-page") star-page)
    (("unstar-item") unstar-item)
+   (("unlove-item") unlove-item)
    (("retrieve-unread") retrieve-unread)))
 
 (serve/servlet start

@@ -79,13 +79,13 @@
 (define get-item
   (lambda (pgc user-id)
     (in-query pgc 
-	      "select feed.title, item.title, item.url, item.date, item.description, item.id, star_item.item_id from item 
+	      "select feed.title, item.title, item.url, item.date, item.description, item.id, item.love, star_item.item_id from item 
        inner join feed on item.feed_id = feed.id 
        inner join rssuser_feed on rssuser_feed.feed_id = feed.id 
        inner join rssuser on rssuser.id = rssuser_feed.rssuser_id
        left outer join read_item on read_item.item_id = item.id and read_item.rssuser_id = rssuser.id
        left outer join star_item on star_item.item_id = item.id and star_item.rssuser_id = rssuser.id
-       where item.date > (now () - interval '24 hour') and rssuser.id = $1 and read_item.item_id is null and item.read = false and item.description  not like '%pym-%' order by item.date asc" 
+       where item.date > (now () - interval '12 hour') and rssuser.id = $1 and read_item.item_id is null and item.read = false and item.description  not like '%pym-%' order by item.date asc" 
 	      user-id)))
 
 (define get-rssuser
