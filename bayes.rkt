@@ -1,6 +1,9 @@
 #lang racket
 (require db)
-      
+
+(define hate-hash (make-hash))
+(define love-hash (make-hash))
+
 (define member?
   (lambda (a lat)
     (cond
@@ -15,36 +18,28 @@
 					#:database "feed"
 					#:password "abc123")))))
 
-;; stop words
-(define common-words '("the" "be" "to" "of" "and" "a" "in" "that" "have" "I" "it" "for" "not" "on"
-                       "with" "he" "as" "you" "do" "at" "this" "but" "his" "by" "from" "they" "we" "again"
-                       "say" "her" "she" "or" "an" "will" "my" "one" "all" "would" "wouldn't" "there" "their"
-                       "what" "so" "up" "out" "if" "about" "who" "who's" "get" "got" "which" "go" "me"
-                       "when" "he'll" "he's" "I've" "isn't" "mustn't" "more" "hers"
-                       "doesn't" "did" "must" "every" "make" "making" "can" "like" "is" "am" "are" 
-                       "aren't" "been" "were" "was" "no" "both" "cannot" "each" "further" "I'm" "I'd"
-                       "two" "how" "our" "back" "also" "think" "over" "its" "day" "us" "most" "give"
-                       "these" "any" "because" "want" "new" "even" "way" "well" "first" "work" "after"
-                       "use" "take" "person" "into" "your" "good" "some" "look" "only" "tell" "really"
-                       "never" "something" "nothing" "anything" "himself" "call" "leave" "try"
-                       "where" "while" "since" "now" "although" "without" "among" "around" "too" "here"
-                       "before" "nor" "though" "except" "unless" "once" "whether" "until" "very" "yes"
-                       "able" "same" "bad" "public" "few" "great" "little" "old" "right" "big" "high"
-                       "let" "then" "anyone" "actually" "under" "round" "just" "being" "them" "goes"
-                       "away" "factor"  "has" "said" "down" "does" "above" "gave" "why" "sure" "came"
-                       "didn't" "-" "seem" "therefore" "had" "see" "come" "part" "via" "possibly" "full"
-                       "spoken" "speak" "coming" "itself" "ride" "true" "totally" "name" "hide" "false"
-                       "yourselves" "yours" "between" "time" "past" "him" "ask" "maybe" "lot"))
+; Load the stop words
+(define common-words
+  (with-input-from-file "stop-words.txt"
+    (lambda ()
+      (for/list ([line (in-lines)]) line))))
 
 (define stem
   (lambda (word)
     (let ((dictionary '(("videos" . "video")
                         ("running" . "run")
                         ("vmas" . "vma")
+                        ("dogs" . "dog")
                         ("albums" . "album")
                         ("skipping" . "skip")
                         ("runs" . "run")
+                        ("nurses" . "nurse")
+                        ("conditions" . "condition")
+                        ("continued" . "continue")
+                        ("hands" . "hand")
+                        ("created" . "create")
                         ("songs" . "song")
+                        ("song's" . "song")
                         ("beyonce" . "beyoncé")
                         ("beyoncã©" . "beyoncé")
                         ("beyince" . "beyoncé")
@@ -55,6 +50,12 @@
                         ("changed" . "change")
                         ("defenses" . "defense")
                         ("haunted" . "haunt")
+                        ("dancers" . "dancer")
+                        ("fans" . "fan")
+                        ("added" . "add")
+                        ("seconds" . "second")
+                        ("parties" . "party")
+                        ("reached" . "reach")
                         ("explained" . "explain"))))
       (cond
         ((equal? (assoc word dictionary) #f) word)
@@ -90,11 +91,10 @@
                                   (add1 (hash-ref hsh current-word)))
                        (parse (cdr word-list))))))))
             (parse (string-split str)))))
-`
-(define hate-hash (make-hash))
-(define love-hash (make-hash))
+
 (for/list (((title desc love) (in-query db-conn "select title, description, love from item where love is not null")))
   (set! desc (regexp-replace* #rx"<[^>]*>" desc ""))
+  (set! desc (string-replace desc "&nbsp;" " "))
   (cond
     ((equal? love #f)
      (parse-string-hash hate-hash title)
@@ -102,6 +102,21 @@
     (else
      (parse-string-hash love-hash title)
      (parse-string-hash love-hash desc))))
+
+(define remove-non-breaking-space
+  (lambda (str)
+    (let ((new-string ""))
+      (letrec ((replace (lambda (char-list)
+                          (cond
+                            ((null? char-list) #f)
+                            ((equal? (integer->char 160) (car char-list))
+                             (set! new-string (string-append new-string (string (integer->char 32))))
+                             (replace (cdr char-list)))
+                            (else
+                             (set! new-string (string-append new-string (string (car char-list))))
+                             (replace (cdr char-list)))))))
+        (replace (string->list str)))
+      new-string)))
 
 ;; the public function - 1 for hate and 0 for love
 (define check-love
@@ -111,17 +126,13 @@
            (mystery-hash (make-hash))
            (vec (query-row db-conn "select title, description from item where id = $1" item-id))
            (new-string "")
-           (test-string (string-append (vector-ref vec 0) " " (regexp-replace* #rx"<[^>]*>" (vector-ref vec 1) ""))))
-      (string-replace test-string (string (integer->char 160)) (string (integer->char 32)))
-      (letrec ((replace (lambda (char-list)
-                          (cond
-                            ((null? char-list) #f)
-                            ((equal? (integer->char 160) (car char-list))
-                             (set! new-string (string-append new-string (string (integer->char 32))))
-                             (replace (cdr char-list)))
-                            (else
-                             (set! new-string (string-append new-string (string (car char-list))))
-                             (replace (cdr char-list))))))) (replace (string->list test-string)))
+           (test-string (remove-non-breaking-space (string-replace 
+                                                    (string-append
+                                                     (vector-ref vec 0) " "
+                                                     (regexp-replace* #rx"<[^>]*>"
+                                                                      (vector-ref vec 1) ""))
+                                                    "&nbsp;" " "
+                                                    ))))
       (letrec ((parse
                 (lambda (word-list)
                   (cond
@@ -146,7 +157,7 @@
                            (else
                             (hash-set! mystery-hash current-word (max .01 (min .99 (/ nhate (+ nhate nlove)))))
                             (parse (cdr word-list)))))))))))
-        (parse (string-split new-string )))
+        (parse (string-split test-string )))
       (letrec ((x
                 (lambda (word-list)
                     (cond
@@ -164,7 +175,8 @@
                             (set! product (* product (hash-ref mystery-hash current-word)))
                             (set! inv-product (* inv-product (- 1 (hash-ref mystery-hash current-word))))
                             (x (cdr word-list))))))))))
-        (x (string-split new-string)))
+        (x (string-split test-string)))
       (/ product (+ product inv-product)))))
 
+(check-love 285555)
 (provide check-love)
